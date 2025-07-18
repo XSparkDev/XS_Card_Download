@@ -22,6 +22,7 @@ import {
 import Image from "next/image"
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { UserProfile } from "@/components/auth/user-profile"
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<"requests" | "uploads">("requests")
@@ -161,6 +162,7 @@ export default function AdminDashboard() {
               <ArrowLeft className="w-4 h-4" />
               <span>Back to Website</span>
             </Link>
+            <UserProfile />
           </div>
 
           {/* Mobile Menu Button */}
@@ -217,6 +219,9 @@ export default function AdminDashboard() {
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back to Website</span>
               </Link>
+              <div className="pt-2 border-t border-gray-200">
+                <UserProfile />
+              </div>
             </div>
           </div>
         </div>

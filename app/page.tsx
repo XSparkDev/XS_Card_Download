@@ -12,6 +12,11 @@ import emailjs from "@emailjs/browser"
 import Link from "next/link"
 import { useDeviceDetection } from "@/hooks/use-device-detection"
 import { getApkDownloadUrl, submitSalesForm, submitContactForm, handleApiError } from "@/utils/api"
+import { useAuth } from "@/hooks/use-auth"
+import { AuthModal } from "@/components/auth/auth-modal"
+import { UserProfile } from "@/components/auth/user-profile"
+import { useAuthGuard } from "@/hooks/use-auth-guard"
+import { AuthGuardModal } from "@/components/auth/auth-guard-modal"
 
 // Custom reCAPTCHA Component
 const XSCardCaptcha = ({
@@ -200,6 +205,22 @@ const PlatformIcon = ({ platform, className }: { platform: string; className?: s
 
 export default function HomePage() {
   const device = useDeviceDetection()
+  const { user, isAuthenticated } = useAuth()
+  const {
+    navigateToProtectedRoute,
+    showAuthModal,
+    setShowAuthModal,
+    authStep,
+    setAuthStep,
+    isSubmitting: isAuthSubmitting,
+    error: authError,
+    signInData: authSignInData,
+    setSignInData: setAuthSignInData,
+    registerData: authRegisterData,
+    setRegisterData: setAuthRegisterData,
+    handleSignIn: handleAuthSignIn,
+    handleRegister: handleAuthRegister
+  } = useAuthGuard()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isClient, setIsClient] = useState(false)
   const [isOverLightSection, setIsOverLightSection] = useState(false)
@@ -788,7 +809,7 @@ export default function HomePage() {
                 isOverLightSection
                   ? "text-gray-700 hover:text-purple-600"
                   : isScrolled
-                    ? "text-white/90 hover:text-white"
+                    ? "text-white/90 hover:text-purple-600"
                     : "text-gray-700 hover:text-purple-600"
               }`}
             >
@@ -806,6 +827,7 @@ export default function HomePage() {
             >
               Contact
             </button>
+            {isAuthenticated && <UserProfile />}
             <Button
               className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 px-4 sm:px-6 xl:px-8 text-sm sm:text-base"
               onClick={openModal}
@@ -893,6 +915,11 @@ export default function HomePage() {
               >
                 Contact
               </button>
+              {isAuthenticated && (
+                <div className="pt-2 border-t border-gray-200">
+                  <UserProfile />
+                </div>
+              )}
               <Button
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
                 onClick={() => {
@@ -1282,10 +1309,17 @@ export default function HomePage() {
               <a href="#" className="hover:text-white transition-colors">
                 Support
               </a>
-              <Link href="/admin" className="hover:text-white transition-colors flex items-center space-x-1">
+              <button
+                onClick={() => {
+                  console.log('Admin Login clicked!');
+                  navigateToProtectedRoute('/admin');
+                }}
+                className="hover:text-white transition-colors flex items-center space-x-1 cursor-pointer"
+                style={{ pointerEvents: 'auto' }}
+              >
                 <User className="w-4 h-4" />
                 <span>Admin Login</span>
-              </Link>
+              </button>
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-white/10 text-center text-white/60">
@@ -2215,6 +2249,22 @@ export default function HomePage() {
           </div>
         </div>
       )}
+
+      {/* Auth Guard Modal */}
+      <AuthGuardModal
+        showAuthModal={showAuthModal}
+        setShowAuthModal={setShowAuthModal}
+        authStep={authStep}
+        setAuthStep={setAuthStep}
+        isSubmitting={isAuthSubmitting}
+        error={authError}
+        signInData={authSignInData}
+        setSignInData={setAuthSignInData}
+        registerData={authRegisterData}
+        setRegisterData={setAuthRegisterData}
+        handleSignIn={handleAuthSignIn}
+        handleRegister={handleAuthRegister}
+      />
     </div>
   )
 }
