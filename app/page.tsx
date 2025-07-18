@@ -17,6 +17,8 @@ import { AuthModal } from "@/components/auth/auth-modal"
 import { UserProfile } from "@/components/auth/user-profile"
 import { useAuthGuard } from "@/hooks/use-auth-guard"
 import { AuthGuardModal } from "@/components/auth/auth-guard-modal"
+import { usePremiumAuthGuard } from "@/hooks/use-premium-auth-guard"
+import { PremiumAuthModal } from "@/components/auth/premium-auth-modal"
 
 // Custom reCAPTCHA Component
 const XSCardCaptcha = ({
@@ -221,6 +223,22 @@ export default function HomePage() {
     handleSignIn: handleAuthSignIn,
     handleRegister: handleAuthRegister
   } = useAuthGuard()
+
+  const {
+    navigateToPremiumTrial,
+    showAuthModal: showPremiumAuthModal,
+    setShowAuthModal: setShowPremiumAuthModal,
+    authStep: premiumAuthStep,
+    setAuthStep: setPremiumAuthStep,
+    isSubmitting: isPremiumSubmitting,
+    error: premiumError,
+    signInData: premiumSignInData,
+    setSignInData: setPremiumSignInData,
+    registerData: premiumRegisterData,
+    setRegisterData: setPremiumRegisterData,
+    handleSignIn: handlePremiumSignIn,
+    handleRegister: handlePremiumRegister
+  } = usePremiumAuthGuard()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isClient, setIsClient] = useState(false)
   const [isOverLightSection, setIsOverLightSection] = useState(false)
@@ -490,10 +508,8 @@ export default function HomePage() {
   }
 
   const openTrialModal = () => {
-    setShowTrialModal(true)
-    setTrialStep("user-check")
-    setIsExistingUser(null)
-    setSubmitStatus("idle")
+    // Use the premium auth guard for premium trial
+    navigateToPremiumTrial()
   }
 
   const closeTrialModal = () => {
@@ -2264,6 +2280,22 @@ export default function HomePage() {
         setRegisterData={setAuthRegisterData}
         handleSignIn={handleAuthSignIn}
         handleRegister={handleAuthRegister}
+      />
+
+      {/* Premium Auth Modal */}
+      <PremiumAuthModal
+        showAuthModal={showPremiumAuthModal}
+        setShowAuthModal={setShowPremiumAuthModal}
+        authStep={premiumAuthStep}
+        setAuthStep={setPremiumAuthStep}
+        isSubmitting={isPremiumSubmitting}
+        error={premiumError}
+        signInData={premiumSignInData}
+        setSignInData={setPremiumSignInData}
+        registerData={premiumRegisterData}
+        setRegisterData={setPremiumRegisterData}
+        handleSignIn={handlePremiumSignIn}
+        handleRegister={handlePremiumRegister}
       />
     </div>
   )

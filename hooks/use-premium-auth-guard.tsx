@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { useAuth } from './use-auth';
 import { useRouter } from 'next/navigation';
 
-interface UseAuthGuardReturn {
+interface UsePremiumAuthGuardReturn {
   isAuthenticated: boolean;
   loading: boolean;
   showAuthModal: boolean;
   setShowAuthModal: (show: boolean) => void;
-  navigateToProtectedRoute: (route: string) => void;
+  navigateToPremiumTrial: () => void;
   authStep: 'user-check' | 'sign-in' | 'register';
   setAuthStep: (step: 'user-check' | 'sign-in' | 'register') => void;
   isSubmitting: boolean;
@@ -29,14 +29,13 @@ interface UseAuthGuardReturn {
   handleRegister: (e: React.FormEvent) => Promise<void>;
 }
 
-export const useAuthGuard = (): UseAuthGuardReturn => {
+export const usePremiumAuthGuard = (): UsePremiumAuthGuardReturn => {
   const { user, loading, isAuthenticated, signIn, register, checkEmailExists } = useAuth();
   const router = useRouter();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authStep, setAuthStep] = useState<'user-check' | 'sign-in' | 'register'>('user-check');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pendingRoute, setPendingRoute] = useState<string | null>(null);
 
   // Form states
   const [signInData, setSignInData] = useState({
@@ -53,17 +52,16 @@ export const useAuthGuard = (): UseAuthGuardReturn => {
     company: ''
   });
 
-  const navigateToProtectedRoute = (route: string) => {
-    console.log('navigateToProtectedRoute called with:', route);
+  const navigateToPremiumTrial = () => {
+    console.log('navigateToPremiumTrial called');
     console.log('isAuthenticated:', isAuthenticated);
     console.log('loading:', loading);
     
     if (isAuthenticated) {
-      console.log('User is authenticated, navigating to:', route);
-      router.push(route);
+      console.log('User is authenticated, navigating to premium trial');
+      router.push('/premium-trial');
     } else {
       console.log('User is not authenticated, showing auth modal');
-      setPendingRoute(route);
       setShowAuthModal(true);
       setAuthStep('user-check');
       setError(null);
@@ -81,10 +79,7 @@ export const useAuthGuard = (): UseAuthGuardReturn => {
     
     if (result.success) {
       setShowAuthModal(false);
-      if (pendingRoute) {
-        router.push(pendingRoute);
-        setPendingRoute(null);
-      }
+      router.push('/premium-trial');
     } else {
       console.log('Sign in error:', result.error);
       setError(result.error?.userFriendlyMessage || 'Login failed');
@@ -121,10 +116,7 @@ export const useAuthGuard = (): UseAuthGuardReturn => {
 
     if (result.success) {
       setShowAuthModal(false);
-      if (pendingRoute) {
-        router.push(pendingRoute);
-        setPendingRoute(null);
-      }
+      router.push('/premium-trial');
     } else {
       setError(result.error?.userFriendlyMessage || 'Registration failed');
     }
@@ -137,7 +129,7 @@ export const useAuthGuard = (): UseAuthGuardReturn => {
     loading,
     showAuthModal,
     setShowAuthModal,
-    navigateToProtectedRoute,
+    navigateToPremiumTrial,
     authStep,
     setAuthStep,
     isSubmitting,

@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 
-interface AuthGuardModalProps {
+interface PremiumAuthModalProps {
   showAuthModal: boolean;
   setShowAuthModal: (show: boolean) => void;
   authStep: 'user-check' | 'sign-in' | 'register';
@@ -26,7 +26,7 @@ interface AuthGuardModalProps {
   handleRegister: (e: React.FormEvent) => Promise<void>;
 }
 
-export const AuthGuardModal: React.FC<AuthGuardModalProps> = ({
+export const PremiumAuthModal: React.FC<PremiumAuthModalProps> = ({
   showAuthModal,
   setShowAuthModal,
   authStep,
@@ -40,7 +40,7 @@ export const AuthGuardModal: React.FC<AuthGuardModalProps> = ({
   handleSignIn,
   handleRegister
 }) => {
-  console.log('AuthGuardModal render - showAuthModal:', showAuthModal);
+  console.log('PremiumAuthModal render - showAuthModal:', showAuthModal);
 
   if (!showAuthModal) {
     return null;
@@ -58,8 +58,8 @@ export const AuthGuardModal: React.FC<AuthGuardModalProps> = ({
       <div className="relative bg-white/25 backdrop-blur-lg border border-white/30 rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto modal-scroll animate-fade-in-scale animation-delay-200">
         {/* Header */}
         <div className="text-center mb-6">
-          <h3 className="text-2xl font-bold text-white mb-2">Authentication Required</h3>
-          <p className="text-white/80">Sign in to access this page</p>
+          <h3 className="text-2xl font-bold text-white mb-2">Start Your Premium Trial</h3>
+          <p className="text-white/80">Sign in or create an account to continue</p>
         </div>
 
         {/* Error Message */}
@@ -72,13 +72,20 @@ export const AuthGuardModal: React.FC<AuthGuardModalProps> = ({
         {/* Auth Steps */}
         {authStep === 'user-check' && (
           <div className="space-y-4">
-            <p className="text-white/80 text-center">Please sign in to access this page</p>
-            <div className="flex justify-center">
+            <p className="text-white/80 text-center">Are you an existing user?</p>
+            <div className="flex space-x-4">
               <Button
                 onClick={() => setAuthStep('sign-in')}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8"
+                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
               >
-                Sign In
+                Yes, Sign In
+              </Button>
+              <Button
+                onClick={() => setAuthStep('register')}
+                variant="outline"
+                className="flex-1 border-white/40 text-white hover:bg-white/10"
+              >
+                No, Register
               </Button>
             </div>
           </div>
