@@ -11,7 +11,7 @@ import { useEffect, useState } from "react"
 import emailjs from "@emailjs/browser"
 import Link from "next/link"
 import { useDeviceDetection } from "@/hooks/use-device-detection"
-import { getApkDownloadUrl } from "@/utils/api"
+import { getApkDownloadUrl, submitSalesForm, submitContactForm, handleApiError } from "@/utils/api"
 
 // Custom reCAPTCHA Component
 const XSCardCaptcha = ({
@@ -375,31 +375,33 @@ export default function HomePage() {
     setSubmitStatus("idle")
 
     try {
-      // EmailJS configuration
-      const templateParams = {
-        from_name: formData.name,
-        from_email: formData.email,
+      // Format data for API
+      const contactFormData = {
+        name: formData.name,
+        email: formData.email,
         company: formData.company,
-        message: formData.message,
-        to_name: "XS Card Team",
+        message: formData.message
       }
 
-      await emailjs.send(
-        "YOUR_SERVICE_ID", // Replace with your EmailJS service ID
-        "YOUR_TEMPLATE_ID", // Replace with your EmailJS template ID
-        templateParams,
-      )
-
-      setSubmitStatus("success")
-      // Reset form after successful submission
-      setTimeout(() => {
-        setFormData({ name: "", email: "", company: "", message: "" })
-        setShowContactModal(false)
-        setSubmitStatus("idle")
-        setIsCaptchaVerified(false)
-      }, 2000)
+      // Submit to API endpoint
+      const response = await submitContactForm(contactFormData)
+      
+      if (response.success) {
+        setSubmitStatus("success")
+        // Reset form after successful submission
+        setTimeout(() => {
+          setFormData({ name: "", email: "", company: "", message: "" })
+          setShowContactModal(false)
+          setSubmitStatus("idle")
+          setIsCaptchaVerified(false)
+        }, 2000)
+      } else {
+        throw new Error(response.message || "Submission failed")
+      }
     } catch (error) {
-      console.error("Email sending failed:", error)
+      console.error("Contact form submission error:", error)
+      const errorMessage = handleApiError(error)
+      console.error("Error details:", errorMessage)
       setSubmitStatus("error")
     } finally {
       setIsSubmitting(false)
@@ -556,46 +558,48 @@ export default function HomePage() {
     setEnterpriseSubmitStatus("idle")
     
     try {
-      // Simulate API call - replace with actual API endpoint
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Format data for backend
-      const formData = {
-        ...enterpriseForm,
-        submittedAt: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        deviceInfo: {
-          isMobile: device.isMobile,
-          isTablet: device.isTablet,
-          isDesktop: device.isDesktop,
-          os: device.os,
-          browser: device.browser
-        }
+      // Format data for API
+      const salesFormData = {
+        name: enterpriseForm.name,
+        email: enterpriseForm.email,
+        company: enterpriseForm.companyName,
+        jobTitle: enterpriseForm.jobTitle,
+        companySize: enterpriseForm.companySize,
+        budget: enterpriseForm.budgetRange,
+        timeline: enterpriseForm.timeline,
+        requirements: enterpriseForm.requirements
       }
       
-      console.log("Enterprise form submitted:", formData)
+      // Submit to API endpoint
+      const response = await submitSalesForm(salesFormData)
       
-      setEnterpriseSubmitStatus("success")
-      
-      // Reset form after successful submission
-      setTimeout(() => {
-        setEnterpriseForm({
-          name: "",
-          jobTitle: "",
-          email: "",
-          companyName: "",
-          companySize: "",
-          timeline: "",
-          budgetRange: "",
-          requirements: ""
-        })
-        setEnterpriseFormErrors({})
-        setShowEnterpriseModal(false)
-        setEnterpriseSubmitStatus("idle")
-      }, 3000)
+      if (response.success) {
+        setEnterpriseSubmitStatus("success")
+        
+        // Reset form after successful submission
+        setTimeout(() => {
+          setEnterpriseForm({
+            name: "",
+            jobTitle: "",
+            email: "",
+            companyName: "",
+            companySize: "",
+            timeline: "",
+            budgetRange: "",
+            requirements: ""
+          })
+          setEnterpriseFormErrors({})
+          setShowEnterpriseModal(false)
+          setEnterpriseSubmitStatus("idle")
+        }, 3000)
+      } else {
+        throw new Error(response.message || "Submission failed")
+      }
       
     } catch (error) {
       console.error("Enterprise form submission error:", error)
+      const errorMessage = handleApiError(error)
+      console.error("Error details:", errorMessage)
       setEnterpriseSubmitStatus("error")
     } finally {
       setIsEnterpriseSubmitting(false)
