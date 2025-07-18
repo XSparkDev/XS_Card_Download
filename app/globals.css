@@ -200,3 +200,9 @@
   animation-delay: 0.8s;
   opacity: 0;
 }
+
+/* Safari-compatible backdrop blur */
+.safari-blur {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}

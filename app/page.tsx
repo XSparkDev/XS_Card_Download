@@ -228,6 +228,7 @@ export default function HomePage() {
   const [enterpriseFormErrors, setEnterpriseFormErrors] = useState<Partial<EnterpriseSalesForm>>({})
   const [isEnterpriseSubmitting, setIsEnterpriseSubmitting] = useState(false)
   const [enterpriseSubmitStatus, setEnterpriseSubmitStatus] = useState<"idle" | "success" | "error">("idle")
+  const [isEnterpriseCaptchaVerified, setIsEnterpriseCaptchaVerified] = useState(false)
   
   const [formData, setFormData] = useState({
     name: "",
@@ -551,9 +552,14 @@ export default function HomePage() {
 
   const handleEnterpriseSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
+    if (!isEnterpriseCaptchaVerified) {
+      setEnterpriseSubmitStatus("error")
+      return
+    }
+
     if (!validateEnterpriseForm()) return
-    
+
     setIsEnterpriseSubmitting(true)
     setEnterpriseSubmitStatus("idle")
     
@@ -1293,7 +1299,7 @@ export default function HomePage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           {/* Backdrop */}
           <div
-            className={`absolute inset-0 backdrop-blur-sm animate-fade-in-scale ${
+            className={`absolute inset-0 backdrop-blur-sm animate-fade-in-scale safari-blur ${
               isOverLightSection ? "bg-black/70" : "bg-black/50"
             }`}
             onClick={closeModal}
@@ -1379,7 +1385,7 @@ export default function HomePage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           {/* Backdrop */}
           <div
-            className={`absolute inset-0 backdrop-blur-sm animate-fade-in-scale ${
+            className={`absolute inset-0 backdrop-blur-sm animate-fade-in-scale safari-blur ${
               isOverLightSection ? "bg-black/70" : "bg-black/50"
             }`}
             onClick={closeContactModal}
@@ -1498,6 +1504,14 @@ export default function HomePage() {
                   />
                 </div>
 
+                {/* Captcha */}
+                <div>
+                  <XSCardCaptcha
+                    onVerify={setIsCaptchaVerified}
+                    isOverLightSection={isOverLightSection}
+                  />
+                </div>
+
                 <Button
                   type="submit"
                   disabled={
@@ -1532,7 +1546,7 @@ export default function HomePage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           {/* Backdrop */}
           <div
-            className={`absolute inset-0 backdrop-blur-sm animate-fade-in-scale ${
+            className={`absolute inset-0 backdrop-blur-sm animate-fade-in-scale safari-blur ${
               isOverLightSection ? "bg-black/70" : "bg-black/50"
             }`}
             onClick={closeEnterpriseModal}
@@ -1568,7 +1582,9 @@ export default function HomePage() {
             {enterpriseSubmitStatus === "error" && (
               <div className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-lg">
                 <p className="text-red-400 text-center font-medium">
-                  ❌ Something went wrong. Please try again or contact us directly.
+                  {!isEnterpriseCaptchaVerified
+                    ? "❌ Please complete the security verification first."
+                    : "❌ Something went wrong. Please try again or contact us directly."}
                 </p>
               </div>
             )}
@@ -1757,6 +1773,14 @@ export default function HomePage() {
                 )}
               </div>
 
+              {/* Captcha */}
+              <div>
+                <XSCardCaptcha
+                  onVerify={setIsEnterpriseCaptchaVerified}
+                  isOverLightSection={isOverLightSection}
+                />
+              </div>
+
               {/* Submit Button */}
               <Button
                 type="submit"
@@ -1789,7 +1813,7 @@ export default function HomePage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           {/* Backdrop */}
           <div
-            className={`absolute inset-0 backdrop-blur-sm animate-fade-in-scale ${
+            className={`absolute inset-0 backdrop-blur-sm animate-fade-in-scale safari-blur ${
               isOverLightSection ? "bg-black/70" : "bg-black/50"
             }`}
             onClick={closeTrialModal}

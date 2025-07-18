@@ -437,15 +437,15 @@ export default function AdminDashboard() {
                                 <Button
                                   onClick={handleUpload}
                                   disabled={isUploading}
-                                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
                                 >
                                   {isUploading ? (
                                     <div className="flex items-center space-x-2">
-                                      <RefreshCw className="w-4 h-4 animate-spin" />
-                                      <span>Uploading...</span>
+                                    <RefreshCw className="w-4 h-4 animate-spin" />
+                                    <span>Uploading...</span>
                                     </div>
                                   ) : (
-                                    "Deploy App"
+                                  "Deploy App"
                                   )}
                                 </Button>
                             </div>
@@ -465,15 +465,15 @@ export default function AdminDashboard() {
       <footer className="px-6 py-8 border-t border-white/10">
         <div className="max-w-7xl mx-auto text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <Image 
-              src="/images/xscard-logo.png" 
-              alt="XS Card Logo" 
-              width={100} 
-              height={32} 
-              className="h-8 w-auto" 
-            />
+                          <Image 
+                src="/images/xscard-logo.png" 
+                alt="XS Card Logo" 
+                width={100} 
+                height={32} 
+                className="h-8 w-auto" 
+              />
           </div>
-          <p className="text-white/60">&copy; 2024 XS Card Admin Dashboard. All rights reserved.</p>
+                      <p className="text-white/60">&copy; 2024 XS Card Admin Dashboard. All rights reserved.</p>
         </div>
       </footer>
     </div>

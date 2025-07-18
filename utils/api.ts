@@ -29,6 +29,7 @@ export interface QueryRequest {
   email: string;
   message: string;
   to: string;
+  type?: string; // Add type field
 }
 
 // Environment-based configuration
@@ -197,7 +198,8 @@ ${formData.message}`;
     name: formData.name,
     email: formData.email,
     message: messageContent,
-    to: "xscard@xspark.co.za"
+    to: "xscard@xspark.co.za",
+    type: "contact" // Add type field
   };
 
   return submitQuery(requestData);
@@ -227,7 +229,8 @@ ${formData.requirements}`;
     name: formData.name,
     email: formData.email,
     message: messageContent,
-    to: "xscard@xspark.co.za"
+    to: "xscard@xspark.co.za",
+    type: "inquiry" // Add type field
   };
 
   return submitQuery(requestData);

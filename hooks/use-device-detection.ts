@@ -78,26 +78,26 @@ export const useDeviceDetection = (
       }
     }
     // For client-side, we'll initialize with basic info and update with full detection
-    return {
-      deviceType: 'desktop',
-      isMobile: false,
-      isTablet: false,
-      isDesktop: true,
-      os: 'unknown',
-      browser: 'unknown',
-      screenSize: 'lg',
+      return {
+        deviceType: 'desktop',
+        isMobile: false,
+        isTablet: false,
+        isDesktop: true,
+        os: 'unknown',
+        browser: 'unknown',
+        screenSize: 'lg',
       width: window.innerWidth,
       height: window.innerHeight,
-      orientation: 'landscape',
-      isTouch: false,
-      isRetina: false,
-      isStandalone: false,
-      breakpoint: 'lg',
-      isAboveBreakpoint: () => false,
-      isBelowBreakpoint: () => false,
-      isBetweenBreakpoints: () => false,
-      ...initialDeviceInfo,
-    }
+        orientation: 'landscape',
+        isTouch: false,
+        isRetina: false,
+        isStandalone: false,
+        breakpoint: 'lg',
+        isAboveBreakpoint: () => false,
+        isBelowBreakpoint: () => false,
+        isBetweenBreakpoints: () => false,
+        ...initialDeviceInfo,
+      }
   })
 
   // Initialize device detection on mount
