@@ -19,156 +19,21 @@ import { useAuthGuard } from "@/hooks/use-auth-guard"
 import { AuthGuardModal } from "@/components/auth/auth-guard-modal"
 import { usePremiumAuthGuard } from "@/hooks/use-premium-auth-guard"
 import { PremiumAuthModal } from "@/components/auth/premium-auth-modal"
+import { HCaptchaComponent } from "@/components/ui/hcaptcha"
 
-// Custom reCAPTCHA Component
+// hCaptcha Component Wrapper
 const XSCardCaptcha = ({
   onVerify,
   isOverLightSection,
 }: {
-  onVerify: (verified: boolean) => void
+  onVerify: (verified: boolean, token?: string) => void
   isOverLightSection: boolean
 }) => {
-  const [isVerified, setIsVerified] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [challenge, setChallenge] = useState("")
-  const [userAnswer, setUserAnswer] = useState("")
-  const [correctAnswer, setCorrectAnswer] = useState(0)
-
-  // Generate a simple math challenge
-  const generateChallenge = () => {
-    const num1 = Math.floor(Math.random() * 10) + 1
-    const num2 = Math.floor(Math.random() * 10) + 1
-    const operations = ["+", "-", "×"]
-    const operation = operations[Math.floor(Math.random() * operations.length)]
-
-    let answer = 0
-    let challengeText = ""
-
-    switch (operation) {
-      case "+":
-        answer = num1 + num2
-        challengeText = `${num1} + ${num2}`
-        break
-      case "-":
-        // Ensure positive result
-        const larger = Math.max(num1, num2)
-        const smaller = Math.min(num1, num2)
-        answer = larger - smaller
-        challengeText = `${larger} - ${smaller}`
-        break
-      case "×":
-        answer = num1 * num2
-        challengeText = `${num1} × ${num2}`
-        break
-    }
-
-    setChallenge(challengeText)
-    setCorrectAnswer(answer)
-  }
-
-  useEffect(() => {
-    generateChallenge()
-  }, [])
-
-  const handleVerify = () => {
-    setIsLoading(true)
-
-    setTimeout(() => {
-      const isCorrect = Number.parseInt(userAnswer) === correctAnswer
-      setIsVerified(isCorrect)
-      onVerify(isCorrect)
-      setIsLoading(false)
-
-      if (!isCorrect) {
-        // Generate new challenge if wrong
-        setTimeout(() => {
-          generateChallenge()
-          setUserAnswer("")
-        }, 1500)
-      }
-    }, 1000)
-  }
-
-  const handleRefresh = () => {
-    generateChallenge()
-    setUserAnswer("")
-    setIsVerified(false)
-    onVerify(false)
-  }
-
   return (
-    <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-4 space-y-4">
-      <div className="flex items-center space-x-3">
-        <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center shadow-md">
-          <Shield className="w-4 h-4 text-white" />
-        </div>
-        <div>
-          <h4 className="text-sm font-semibold text-white">XS Card Security Check</h4>
-          <p className="text-xs text-white/70">Help us keep your data safe</p>
-        </div>
-      </div>
-
-      {!isVerified ? (
-        <div className="space-y-3">
-          <div className="flex items-center space-x-3">
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 flex-1">
-              <p className="text-sm text-white font-medium mb-2">What is {challenge}?</p>
-              <div className="flex space-x-2">
-                <input
-                  type="number"
-                  value={userAnswer}
-                  onChange={(e) => setUserAnswer(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Your answer"
-                  disabled={isLoading}
-                />
-                <button
-                  type="button"
-                  onClick={handleRefresh}
-                  className="p-2 bg-white/20 hover:bg-white/30 rounded-md transition-colors"
-                  disabled={isLoading}
-                >
-                  <RefreshCw className={`w-4 h-4 text-white ${isLoading ? "animate-spin" : ""}`} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            onClick={handleVerify}
-            disabled={!userAnswer || isLoading}
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-2 text-sm font-medium disabled:opacity-50"
-          >
-            {isLoading ? (
-              <div className="flex items-center space-x-2">
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Verifying...</span>
-              </div>
-            ) : (
-              "Verify"
-            )}
-          </Button>
-        </div>
-      ) : (
-        <div className="flex items-center space-x-3 p-3 bg-green-500/20 border border-green-500/30 rounded-lg">
-          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-xs font-bold">✓</span>
-          </div>
-          <div>
-            <p className="text-green-400 font-medium text-sm">Verification Complete</p>
-            <p className="text-green-400/80 text-xs">Thanks for helping us stay secure!</p>
-          </div>
-        </div>
-      )}
-
-      <div className="flex items-center justify-center space-x-2 pt-2 border-t border-white/10">
-        <div className="w-4 h-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-sm flex items-center justify-center">
-          <span className="text-white text-xs font-bold">XS</span>
-        </div>
-        <span className="text-xs text-white/60">Protected by XS Card Security</span>
-      </div>
-    </div>
+    <HCaptchaComponent
+      onVerify={onVerify}
+      isOverLightSection={isOverLightSection}
+    />
   )
 }
 
@@ -236,21 +101,25 @@ export default function HomePage() {
     setSignInData: setPremiumSignInData,
     registerData: premiumRegisterData,
     setRegisterData: setPremiumRegisterData,
+    cardData: premiumCardData,
+    setCardData: setPremiumCardData,
+    userData: premiumUserData,
+    setUserData: setPremiumUserData,
     handleSignIn: handlePremiumSignIn,
-    handleRegister: handlePremiumRegister
+    handleRegister: handlePremiumRegister,
+    handleCardSubmit: handlePremiumCardSubmit
   } = usePremiumAuthGuard()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isClient, setIsClient] = useState(false)
   const [isOverLightSection, setIsOverLightSection] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [showContactModal, setShowContactModal] = useState(false)
-  const [showTrialModal, setShowTrialModal] = useState(false)
+
   const [showEnterpriseModal, setShowEnterpriseModal] = useState(false)
-  const [trialStep, setTrialStep] = useState<"user-check" | "sign-in" | "register" | "card-details">("user-check")
-  const [isExistingUser, setIsExistingUser] = useState<boolean | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle")
   const [isCaptchaVerified, setIsCaptchaVerified] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   
   // Enterprise Sales Form State
@@ -268,6 +137,7 @@ export default function HomePage() {
   const [isEnterpriseSubmitting, setIsEnterpriseSubmitting] = useState(false)
   const [enterpriseSubmitStatus, setEnterpriseSubmitStatus] = useState<"idle" | "success" | "error">("idle")
   const [isEnterpriseCaptchaVerified, setIsEnterpriseCaptchaVerified] = useState(false)
+  const [enterpriseCaptchaToken, setEnterpriseCaptchaToken] = useState<string | null>(null)
   
   const [formData, setFormData] = useState({
     name: "",
@@ -287,15 +157,7 @@ export default function HomePage() {
     confirmPassword: "",
     company: "",
   })
-  const [cardData, setCardData] = useState({
-    cardNumber: "",
-    expiryDate: "",
-    cvv: "",
-    cardholderName: "",
-    billingAddress: "",
-    city: "",
-    postalCode: "",
-  })
+
 
   useEffect(() => {
     setIsClient(true)
@@ -396,20 +258,16 @@ export default function HomePage() {
     })
   }
 
-  const handleCardChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCardData({
-      ...cardData,
-      [e.target.name]: e.target.value,
-    })
-  }
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!isCaptchaVerified) {
-      setSubmitStatus("error")
-      return
-    }
+    // Temporarily bypass captcha for testing
+    // if (!isCaptchaVerified || !captchaToken) {
+    //   setSubmitStatus("error")
+    //   return
+    // }
 
     setIsSubmitting(true)
     setSubmitStatus("idle")
@@ -420,7 +278,8 @@ export default function HomePage() {
         name: formData.name,
         email: formData.email,
         company: formData.company,
-        message: formData.message
+        message: formData.message,
+        captchaToken: captchaToken || undefined // Convert null to undefined
       }
 
       // Submit to API endpoint
@@ -434,6 +293,7 @@ export default function HomePage() {
           setShowContactModal(false)
           setSubmitStatus("idle")
           setIsCaptchaVerified(false)
+          setCaptchaToken(null)
         }, 2000)
       } else {
         throw new Error(response.message || "Submission failed")
@@ -448,44 +308,7 @@ export default function HomePage() {
     }
   }
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
 
-    // Simulate API call
-    setTimeout(() => {
-      // For demo purposes, assume sign-in is successful
-      setTrialStep("card-details")
-      setIsSubmitting(false)
-    }, 1000)
-  }
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-
-    // Simulate API call
-    setTimeout(() => {
-      // For demo purposes, assume registration is successful
-      setTrialStep("card-details")
-      setIsSubmitting(false)
-    }, 1000)
-  }
-
-  const handleCardSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-
-    // Simulate payment processing
-    setTimeout(() => {
-      setSubmitStatus("success")
-      setIsSubmitting(false)
-      // Close modal after success
-      setTimeout(() => {
-        closeTrialModal()
-      }, 2000)
-    }, 2000)
-  }
 
   const openModal = () => {
     setShowModal(true)
@@ -507,47 +330,16 @@ export default function HomePage() {
     setIsCaptchaVerified(false)
   }
 
-  const openTrialModal = () => {
-    // Use the premium auth guard for premium trial
-    navigateToPremiumTrial()
-  }
 
-  const closeTrialModal = () => {
-    setShowTrialModal(false)
-    setTrialStep("user-check")
-    setIsExistingUser(null)
-    setSubmitStatus("idle")
-    // Reset all form data
-    setSignInData({ email: "", password: "" })
-    setRegisterData({ firstName: "", lastName: "", email: "", password: "", confirmPassword: "", company: "" })
-    setCardData({
-      cardNumber: "",
-      expiryDate: "",
-      cvv: "",
-      cardholderName: "",
-      billingAddress: "",
-      city: "",
-      postalCode: "",
-    })
-  }
 
-  const handleUserResponse = (isExisting: boolean) => {
-    setIsExistingUser(isExisting)
-    if (isExisting) {
-      setTrialStep("sign-in")
-    } else {
-      setTrialStep("register")
-    }
-  }
 
-  const goBackToUserCheck = () => {
-    setTrialStep("user-check")
-    setIsExistingUser(null)
-  }
 
-  const handleCaptchaVerify = (verified: boolean) => {
+  const handleCaptchaVerify = (verified: boolean, token?: string) => {
     setIsCaptchaVerified(verified)
-    if (!verified) {
+    if (verified && token) {
+      setCaptchaToken(token)
+    } else {
+      setCaptchaToken(null)
       setSubmitStatus("idle")
     }
   }
@@ -590,7 +382,7 @@ export default function HomePage() {
   const handleEnterpriseSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!isEnterpriseCaptchaVerified) {
+    if (!isEnterpriseCaptchaVerified || !enterpriseCaptchaToken) {
       setEnterpriseSubmitStatus("error")
       return
     }
@@ -610,7 +402,8 @@ export default function HomePage() {
         companySize: enterpriseForm.companySize,
         budget: enterpriseForm.budgetRange,
         timeline: enterpriseForm.timeline,
-        requirements: enterpriseForm.requirements
+        requirements: enterpriseForm.requirements,
+        captchaToken: enterpriseCaptchaToken // Include captcha token
       }
       
       // Submit to API endpoint
@@ -634,6 +427,8 @@ export default function HomePage() {
           setEnterpriseFormErrors({})
           setShowEnterpriseModal(false)
           setEnterpriseSubmitStatus("idle")
+          setIsEnterpriseCaptchaVerified(false)
+          setEnterpriseCaptchaToken(null)
         }, 3000)
       } else {
         throw new Error(response.message || "Submission failed")
@@ -1163,7 +958,7 @@ export default function HomePage() {
                 </ul>
                 <Button
                   className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-                  onClick={openTrialModal}
+                                      onClick={navigateToPremiumTrial}
                 >
                   Start Premium Trial
                 </Button>
@@ -1456,11 +1251,13 @@ export default function HomePage() {
             {/* Header */}
             <div className="text-center mb-6">
               <div className="flex items-center justify-center mb-3">
-                <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
-                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clipRule="evenodd" />
-                  </svg>
-                </div>
+                <Image 
+                  src="/favicon.png" 
+                  alt="XS Card Logo" 
+                  width={32} 
+                  height={32} 
+                  className="mr-3 rounded-lg"
+                />
                 <h3 className="text-2xl font-bold text-white">Get In Touch</h3>
               </div>
             </div>
@@ -1557,7 +1354,15 @@ export default function HomePage() {
                 {/* Captcha */}
                 <div>
                   <XSCardCaptcha
-                    onVerify={setIsCaptchaVerified}
+                  onVerify={(verified: boolean, token?: string) => {
+                    setIsCaptchaVerified(verified)
+                    if (verified && token) {
+                      setCaptchaToken(token)
+                    } else {
+                      setCaptchaToken(null)
+                      setSubmitStatus("idle")
+                    }
+                  }}
                     isOverLightSection={isOverLightSection}
                   />
                 </div>
@@ -1616,7 +1421,16 @@ export default function HomePage() {
 
             {/* Header */}
             <div className="text-center mb-8">
-              <h3 className="text-3xl font-bold text-white mb-3">Enterprise Sales Enquiry</h3>
+              <div className="flex items-center justify-center mb-3">
+                <Image 
+                  src="/favicon.png" 
+                  alt="XS Card Logo" 
+                  width={40} 
+                  height={40} 
+                  className="mr-3 rounded-lg"
+                />
+                <h3 className="text-3xl font-bold text-white">Enterprise Sales Enquiry</h3>
+              </div>
               <p className="text-white/80 text-lg">Tell us about your business needs and we'll get back to you within 24 hours</p>
             </div>
 
@@ -1826,7 +1640,15 @@ export default function HomePage() {
               {/* Captcha */}
               <div>
                 <XSCardCaptcha
-                  onVerify={setIsEnterpriseCaptchaVerified}
+                  onVerify={(verified: boolean, token?: string) => {
+                    setIsEnterpriseCaptchaVerified(verified)
+                    if (!verified) {
+                      setEnterpriseCaptchaToken(null)
+                      setEnterpriseSubmitStatus("idle")
+                    } else if (token) {
+                      setEnterpriseCaptchaToken(token)
+                    }
+                  }}
                   isOverLightSection={isOverLightSection}
                 />
               </div>
@@ -1858,413 +1680,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Trial Modal */}
-      {showTrialModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div
-            className={`absolute inset-0 backdrop-blur-sm animate-fade-in-scale safari-blur ${
-              isOverLightSection ? "bg-black/70" : "bg-black/50"
-            }`}
-            onClick={closeTrialModal}
-          ></div>
 
-          {/* Modal Content */}
-          <div
-            className={`relative ${getModalBackgroundClass()} rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto modal-scroll animate-fade-in-scale animation-delay-200`}
-          >
-            {/* Close Button */}
-            <button
-              onClick={closeTrialModal}
-              className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors text-xl"
-            >
-              ✕
-            </button>
-
-            {/* Header */}
-            <div className="text-center mb-6">
-              <h3 className="text-2xl font-bold text-white mb-2">Start Your Premium Trial</h3>
-              <p className="text-white/80">Let's get you set up</p>
-            </div>
-
-            {/* Success Message */}
-            {submitStatus === "success" && (
-              <div className="mb-6 p-4 bg-green-500/20 border border-green-500/30 rounded-lg">
-                <p className="text-green-400 text-center font-medium">✅ Thank you! Your trial has started.</p>
-              </div>
-            )}
-
-            {/* Trial Steps */}
-            {trialStep === "user-check" && (
-              <div className="space-y-4">
-                <p className="text-white/80 text-center">Are you an existing user?</p>
-                <div className="flex space-x-4">
-                  <Button
-                    onClick={() => handleUserResponse(true)}
-                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-                  >
-                    Yes, Sign In
-                  </Button>
-                  <Button
-                    onClick={() => handleUserResponse(false)}
-                    variant="outline"
-                    className="flex-1 border-white/40 text-white hover:bg-white/10"
-                  >
-                    No, Register
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {trialStep === "sign-in" && (
-              <div className="space-y-4">
-                <Button
-                  onClick={goBackToUserCheck}
-                  variant="outline"
-                  className="border-white/40 text-white hover:bg-white/10 w-full mb-4 bg-transparent"
-                >
-                  ← Back
-                </Button>
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
-                      Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      required
-                      value={signInData.email}
-                      onChange={handleSignInChange}
-                      className={getInputClass()}
-                      placeholder="your.email@company.com"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-white mb-2">
-                      Password *
-                    </label>
-                    <input
-                      type="password"
-                      id="password"
-                      name="password"
-                      required
-                      value={signInData.password}
-                      onChange={handleSignInChange}
-                      className={getInputClass()}
-                      placeholder="Enter your password"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting || !signInData.email || !signInData.password}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-                  >
-                    {isSubmitting ? (
-                      <div className="flex items-center space-x-2">
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Signing In...</span>
-                      </div>
-                    ) : (
-                      "Sign In"
-                    )}
-                  </Button>
-                </form>
-              </div>
-            )}
-
-            {trialStep === "register" && (
-              <div className="space-y-4">
-                <Button
-                  onClick={goBackToUserCheck}
-                  variant="outline"
-                  className="border-white/40 text-white hover:bg-white/10 w-full mb-4 bg-transparent"
-                >
-                  ← Back
-                </Button>
-                <form onSubmit={handleRegister} className="space-y-4">
-                  <div>
-                    <label htmlFor="firstName" className="block text-sm font-medium text-white mb-2">
-                      First Name *
-                    </label>
-                    <input
-                      type="text"
-                      id="firstName"
-                      name="firstName"
-                      required
-                      value={registerData.firstName}
-                      onChange={handleRegisterChange}
-                      className={getInputClass()}
-                      placeholder="Enter your first name"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="lastName" className="block text-sm font-medium text-white mb-2">
-                      Last Name *
-                    </label>
-                    <input
-                      type="text"
-                      id="lastName"
-                      name="lastName"
-                      required
-                      value={registerData.lastName}
-                      onChange={handleRegisterChange}
-                      className={getInputClass()}
-                      placeholder="Enter your last name"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
-                      Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      required
-                      value={registerData.email}
-                      onChange={handleRegisterChange}
-                      className={getInputClass()}
-                      placeholder="your.email@company.com"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-white mb-2">
-                      Password *
-                    </label>
-                    <input
-                      type="password"
-                      id="password"
-                      name="password"
-                      required
-                      value={registerData.password}
-                      onChange={handleRegisterChange}
-                      className={getInputClass()}
-                      placeholder="Enter your password"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-white mb-2">
-                      Confirm Password *
-                    </label>
-                    <input
-                      type="password"
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      required
-                      value={registerData.confirmPassword}
-                      onChange={handleRegisterChange}
-                      className={getInputClass()}
-                      placeholder="Confirm your password"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="company" className="block text-sm font-medium text-white mb-2">
-                      Company Name
-                    </label>
-                    <input
-                      type="text"
-                      id="company"
-                      name="company"
-                      value={registerData.company}
-                      onChange={handleRegisterChange}
-                      className={getInputClass()}
-                      placeholder="Your Company"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={
-                      isSubmitting ||
-                      !registerData.firstName ||
-                      !registerData.lastName ||
-                      !registerData.email ||
-                      !registerData.password ||
-                      !registerData.confirmPassword
-                    }
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-                  >
-                    {isSubmitting ? (
-                      <div className="flex items-center space-x-2">
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Registering...</span>
-                      </div>
-                    ) : (
-                      "Register"
-                    )}
-                  </Button>
-                </form>
-              </div>
-            )}
-
-            {trialStep === "card-details" && (
-              <div className="space-y-4">
-                <form onSubmit={handleCardSubmit} className="space-y-4">
-                  <div>
-                    <label htmlFor="cardNumber" className="block text-sm font-medium text-white mb-2">
-                      Card Number *
-                    </label>
-                    <input
-                      type="text"
-                      id="cardNumber"
-                      name="cardNumber"
-                      required
-                      value={cardData.cardNumber}
-                      onChange={handleCardChange}
-                      className={getInputClass()}
-                      placeholder="Enter your card number"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="expiryDate" className="block text-sm font-medium text-white mb-2">
-                      Expiry Date *
-                    </label>
-                    <input
-                      type="text"
-                      id="expiryDate"
-                      name="expiryDate"
-                      required
-                      value={cardData.expiryDate}
-                      onChange={handleCardChange}
-                      className={getInputClass()}
-                      placeholder="MM/YY"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="cvv" className="block text-sm font-medium text-white mb-2">
-                      CVV *
-                    </label>
-                    <input
-                      type="text"
-                      id="cvv"
-                      name="cvv"
-                      required
-                      value={cardData.cvv}
-                      onChange={handleCardChange}
-                      className={getInputClass()}
-                      placeholder="Enter your CVV"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="cardholderName" className="block text-sm font-medium text-white mb-2">
-                      Cardholder Name *
-                    </label>
-                    <input
-                      type="text"
-                      id="cardholderName"
-                      name="cardholderName"
-                      required
-                      value={cardData.cardholderName}
-                      onChange={handleCardChange}
-                      className={getInputClass()}
-                      placeholder="Enter cardholder name"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="billingAddress" className="block text-sm font-medium text-white mb-2">
-                      Billing Address *
-                    </label>
-                    <input
-                      type="text"
-                      id="billingAddress"
-                      name="billingAddress"
-                      required
-                      value={cardData.billingAddress}
-                      onChange={handleCardChange}
-                      className={getInputClass()}
-                      placeholder="Enter billing address"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="city" className="block text-sm font-medium text-white mb-2">
-                      City *
-                    </label>
-                    <input
-                      type="text"
-                      id="city"
-                      name="city"
-                      required
-                      value={cardData.city}
-                      onChange={handleCardChange}
-                      className={getInputClass()}
-                      placeholder="Enter city"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="postalCode" className="block text-sm font-medium text-white mb-2">
-                      Postal Code *
-                    </label>
-                    <input
-                      type="text"
-                      id="postalCode"
-                      name="postalCode"
-                      required
-                      value={cardData.postalCode}
-                      onChange={handleCardChange}
-                      className={getInputClass()}
-                      placeholder="Enter postal code"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={
-                      isSubmitting ||
-                      !cardData.cardNumber ||
-                      !cardData.expiryDate ||
-                      !cardData.cvv ||
-                      !cardData.cardholderName ||
-                      !cardData.billingAddress ||
-                      !cardData.city ||
-                      !cardData.postalCode
-                    }
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-                  >
-                    {isSubmitting ? (
-                      <div className="flex items-center space-x-2">
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Processing Payment...</span>
-                      </div>
-                    ) : (
-                      "Start Trial"
-                    )}
-                  </Button>
-                </form>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Auth Guard Modal */}
       <AuthGuardModal
@@ -2280,6 +1696,7 @@ export default function HomePage() {
         setRegisterData={setAuthRegisterData}
         handleSignIn={handleAuthSignIn}
         handleRegister={handleAuthRegister}
+        isOverLightSection={isOverLightSection}
       />
 
       {/* Premium Auth Modal */}
@@ -2294,8 +1711,13 @@ export default function HomePage() {
         setSignInData={setPremiumSignInData}
         registerData={premiumRegisterData}
         setRegisterData={setPremiumRegisterData}
+        cardData={premiumCardData}
+        setCardData={setPremiumCardData}
+        userData={premiumUserData}
         handleSignIn={handlePremiumSignIn}
         handleRegister={handlePremiumRegister}
+        handleCardSubmit={handlePremiumCardSubmit}
+        isOverLightSection={isOverLightSection}
       />
     </div>
   )

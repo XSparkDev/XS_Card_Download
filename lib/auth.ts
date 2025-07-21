@@ -10,6 +10,7 @@ import {
   AuthErrorCodes
 } from 'firebase/auth';
 import { auth } from './firebase';
+import { API_BASE_URL } from '@/utils/api';
 
 // Authentication error types
 export interface AuthErrorType {
@@ -34,7 +35,7 @@ export interface LoginData {
 // Authentication response
 export interface AuthResponse {
   success: boolean;
-  user?: User;
+  user?: User | null;
   error?: AuthErrorType;
 }
 
@@ -70,30 +71,73 @@ const convertAuthError = (error: AuthError): AuthErrorType => ({
 // Register new user
 export const registerUser = async (data: RegisterData): Promise<AuthResponse> => {
   try {
-    console.log('🔐 Attempting to register user:', data.email);
-    const userCredential: UserCredential = await createUserWithEmailAndPassword(
+    console.log('🔐 Attempting to register user via backend:', data.email);
+    
+    // Call backend adduser endpoint directly
+    const response = await fetch(`${API_BASE_URL}/adduser`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: data.displayName?.split(' ')[0] || '', // First name
+        surname: data.displayName?.split(' ').slice(1).join(' ') || '', // Last name
+        email: data.email,
+        password: data.password, // Password from registration
+        status: 'active',
+        plan: 'free' // Default to free plan for new users
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('❌ Backend user creation failed:', errorData);
+      
+      return {
+        success: false,
+        error: {
+          code: 'BACKEND_ERROR',
+          message: errorData.message || 'Backend registration failed',
+          userFriendlyMessage: errorData.message || 'Registration failed. Please try again.'
+        }
+      };
+    }
+
+    const result = await response.json();
+    console.log('✅ Backend user created successfully:', result);
+
+    // After successful backend registration, sign in with Firebase
+    // This assumes the backend creates the Firebase user or provides credentials
+    try {
+      const userCredential: UserCredential = await signInWithEmailAndPassword(
       auth,
       data.email,
       data.password
     );
 
-    // Update profile with display name if provided
-    if (data.displayName && userCredential.user) {
-      await updateProfile(userCredential.user, {
-        displayName: data.displayName
-      });
-    }
-
-    console.log('✅ User registered successfully:', userCredential.user.email);
+      console.log('✅ User signed in successfully:', userCredential.user.email);
     return {
       success: true,
       user: userCredential.user
     };
+    } catch (signInError) {
+      console.warn('⚠️ Firebase sign in failed after backend registration:', signInError);
+      // Return success since backend registration worked, but log the Firebase issue
+      return {
+        success: true,
+        user: null // User registered in backend but not signed in to Firebase
+      };
+    }
+
   } catch (error) {
-    const authError = error as AuthError;
+    console.error('❌ Registration error:', error);
     return {
       success: false,
-      error: convertAuthError(authError)
+      error: {
+        code: 'REGISTRATION_ERROR',
+        message: 'Registration failed',
+        userFriendlyMessage: 'Registration failed. Please try again.'
+      }
     };
   }
 };

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from './use-auth';
 import { useRouter } from 'next/navigation';
+import { auth } from '@/lib/firebase';
 
 interface UseAuthGuardReturn {
   isAuthenticated: boolean;
@@ -80,6 +81,7 @@ export const useAuthGuard = (): UseAuthGuardReturn => {
     console.log('Sign in result:', result);
     
     if (result.success) {
+      // Simple admin login flow - just close modal and navigate
       setShowAuthModal(false);
       if (pendingRoute) {
         router.push(pendingRoute);
@@ -120,6 +122,7 @@ export const useAuthGuard = (): UseAuthGuardReturn => {
     });
 
     if (result.success) {
+      // Simple admin registration flow - just close modal and navigate
       setShowAuthModal(false);
       if (pendingRoute) {
         router.push(pendingRoute);
@@ -131,6 +134,8 @@ export const useAuthGuard = (): UseAuthGuardReturn => {
 
     setIsSubmitting(false);
   };
+
+
 
   return {
     isAuthenticated,
