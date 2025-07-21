@@ -22,47 +22,171 @@ import {
 import Image from "next/image"
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { UserProfile } from "@/components/auth/user-profile"
+import { auth } from "@/lib/firebase"
+import { API_BASE_URL } from "@/utils/api"
+
+interface CustomerRequest {
+  id: number;
+  type: "demo" | "inquiry" | "call";
+  name: string;
+  email: string;
+  company: string;
+  message: string;
+  date: string;
+  status: "pending" | "responded";
+}
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<"requests" | "uploads">("requests")
   const [showMobileMenu, setShowMobileMenu] = useState(false)
-  const [requests, setRequests] = useState([
+  const [requests, setRequests] = useState<CustomerRequest[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedRequest, setSelectedRequest] = useState<CustomerRequest | null>(null)
+  const [responseText, setResponseText] = useState("")
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [isUploading, setIsUploading] = useState(false)
+  const [filters, setFilters] = useState({
+    type: "",
+    status: ""
+  })
+  
+  // Mock data for when backend is unavailable
+  const mockRequests: CustomerRequest[] = [
     {
       id: 1,
       type: "demo",
       name: "John Smith",
-      email: "john@company.com",
-      company: "Tech Corp",
-      message: "Interested in a demo for our 50-person team",
+      email: "john.smith@company.com",
+      company: "Tech Solutions Inc",
+      message: "I'm interested in seeing a demo of your digital business card solution. We have a team of 50+ sales representatives who could benefit from this.",
       date: "2024-01-15",
-      status: "pending",
+      status: "pending"
     },
     {
       id: 2,
       type: "inquiry",
       name: "Sarah Johnson",
-      email: "sarah@startup.co",
-      company: "StartupCo",
-      message: "Questions about enterprise pricing and features",
+      email: "sarah.j@startup.co",
+      company: "Innovation Startup",
+      message: "What are your pricing plans for small businesses? We're looking for a cost-effective solution for our team of 10 people.",
       date: "2024-01-14",
-      status: "responded",
+      status: "responded"
     },
     {
       id: 3,
       type: "call",
-      name: "Mike Wilson",
-      email: "mike@business.com",
-      company: "Business Solutions",
-      message: "Request for sales call to discuss implementation",
+      name: "Michael Chen",
+      email: "mchen@enterprise.com",
+      company: "Enterprise Corp",
+      message: "Please call me to discuss enterprise licensing options. We're interested in deploying this across multiple departments.",
       date: "2024-01-13",
-      status: "pending",
-    },
-  ])
-  const [selectedRequest, setSelectedRequest] = useState<any>(null)
-  const [responseText, setResponseText] = useState("")
-  const [uploadFile, setUploadFile] = useState<File | null>(null)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [isUploading, setIsUploading] = useState(false)
+      status: "pending"
+    }
+  ]
+
+  // Fetch requests from API
+  const fetchRequests = async () => {
+    setLoading(true)
+    setError(null)
+    
+    try {
+      const user = auth.currentUser
+      if (!user) {
+        setError('User not authenticated')
+        setLoading(false)
+        return
+      }
+
+      const idToken = await user.getIdToken()
+      
+      // Build query parameters
+      const params = new URLSearchParams()
+      if (filters.type) params.append('type', filters.type)
+      if (filters.status) params.append('status', filters.status)
+      
+      // Try multiple endpoint variations
+      const endpoints = [
+        `${API_BASE_URL}/api/contact-requests/frontend`,
+        `${API_BASE_URL}/api/contact-requests`,
+        `${API_BASE_URL}/contact-requests/frontend`,
+        `${API_BASE_URL}/contact-requests`
+      ]
+      
+      let lastError: Error | null = null
+      
+      for (const endpoint of endpoints) {
+        try {
+          const url = `${endpoint}${params.toString() ? `?${params.toString()}` : ''}`
+          console.log('🔍 Trying endpoint:', url)
+          
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${idToken}`,
+              'Content-Type': 'application/json'
+            }
+          })
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
+
+          const result = await response.json()
+          
+          if (result.success) {
+            console.log('✅ Successfully fetched requests from:', endpoint)
+            setRequests(result.data || [])
+            return // Success, exit the loop
+          } else {
+            throw new Error(result.message || 'Failed to fetch requests')
+          }
+        } catch (error) {
+          console.warn(`⚠️ Failed to fetch from ${endpoint}:`, error)
+          lastError = error instanceof Error ? error : new Error('Unknown error')
+          continue // Try next endpoint
+        }
+      }
+      
+      // If all endpoints failed, use mock data as fallback
+      if (lastError) {
+        console.warn('⚠️ Using mock data as fallback - backend unavailable')
+        setRequests(mockRequests)
+        setError('Backend server unavailable. Showing demo data.')
+        return
+      }
+      
+    } catch (error) {
+      console.error('❌ All endpoints failed:', error)
+      
+      // Provide more helpful error messages
+      let errorMessage = 'Failed to fetch requests'
+      if (error instanceof Error) {
+        if (error.message.includes('ERR_BLOCKED_BY_CLIENT')) {
+          errorMessage = 'Request blocked by browser. Please check your ad blocker or try a different browser.'
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Cannot connect to server. Please check if the backend is running.'
+        } else if (error.message.includes('401')) {
+          errorMessage = 'Authentication failed. Please log in again.'
+        } else if (error.message.includes('403')) {
+          errorMessage = 'Access denied. You may not have admin privileges.'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      setError(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch requests on component mount and when filters change
+  useEffect(() => {
+    fetchRequests()
+  }, [filters])
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -84,30 +208,116 @@ export default function AdminDashboard() {
     }
   }
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!uploadFile) return
 
     setIsUploading(true)
     setUploadProgress(0)
+    setError(null)
 
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          setIsUploading(false)
-          setUploadFile(null)
-          return 100
-        }
-        return prev + 10
+    try {
+      const user = auth.currentUser
+      if (!user) {
+        setError('User not authenticated')
+        setIsUploading(false)
+        return
+      }
+
+      const idToken = await user.getIdToken()
+      
+      // Create FormData for file upload
+      const formData = new FormData()
+      formData.append('file', uploadFile)
+      
+      // Make API call to upload APK
+      const response = await fetch(`${API_BASE_URL}/upload-apk`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+          // Don't set Content-Type for FormData, let browser set it with boundary
+        },
+        body: formData
       })
-    }, 200)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        // Upload successful
+        setUploadProgress(100)
+        setUploadFile(null)
+        
+        // Show success message
+        console.log('APK uploaded successfully:', result.data)
+        
+        // You could add a success toast notification here
+        // or redirect to a success page
+      } else {
+        throw new Error(result.message || 'Failed to upload APK')
+      }
+    } catch (error) {
+      console.error('Error uploading APK:', error)
+      setError(error instanceof Error ? error.message : 'Failed to upload APK')
+    } finally {
+      setIsUploading(false)
+    }
   }
 
-  const handleResponse = (requestId: number) => {
-    setRequests((prev) => prev.map((req) => (req.id === requestId ? { ...req, status: "responded" } : req)))
-    setSelectedRequest(null)
-    setResponseText("")
+  const handleResponse = async (requestId: number) => {
+    if (!responseText.trim()) return
+    
+    try {
+      const user = auth.currentUser
+      if (!user) {
+        setError('User not authenticated')
+        return
+      }
+
+      const idToken = await user.getIdToken()
+      
+      // Make API call to update request status
+      const response = await fetch(`${API_BASE_URL}/api/contact-requests/${requestId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: "responded",
+          response: responseText.trim(),
+          notes: "Response sent via admin dashboard"
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        // Update local state to reflect the change
+        setRequests((prev) => prev.map((req) => 
+          req.id === requestId ? { ...req, status: "responded" as const } : req
+        ))
+        
+        setSelectedRequest(null)
+        setResponseText("")
+        
+        // Show success message (you could add a toast notification here)
+        console.log('Response sent successfully')
+      } else {
+        throw new Error(result.message || 'Failed to send response')
+      }
+    } catch (error) {
+      console.error('Error responding to request:', error)
+      setError(error instanceof Error ? error.message : 'Failed to send response')
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -134,13 +344,58 @@ export default function AdminDashboard() {
     }
   }
 
+  const handleFilterChange = (filterType: 'type' | 'status', value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }))
+  }
+
+  const clearFilters = () => {
+    setFilters({ type: "", status: "" })
+  }
+
+  // Test backend connection
+  const testBackendConnection = async () => {
+    console.log('🔍 Testing backend connection...')
+    try {
+      const response = await fetch(`${API_BASE_URL}/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        console.log('✅ Backend is reachable')
+        alert('Backend is reachable! Try refreshing the page.')
+      } else {
+        console.log('⚠️ Backend responded with status:', response.status)
+        alert(`Backend responded with status: ${response.status}`)
+      }
+    } catch (error) {
+      console.log('❌ Backend connection failed:', error)
+      alert('Backend connection failed. Please check if the server is running on port 8383.')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Navigation */}
-      <nav className="fixed top-4 left-4 right-4 z-50 px-4 sm:px-6 py-2 sm:py-4 rounded-full bg-white/20 backdrop-blur-lg border border-white/10">
-        <div className="flex items-center justify-between w-full max-w-7xl mx-auto">
+      <nav
+        className={`fixed top-4 z-50 transition-all duration-300 ${
+          // Desktop and Tablet: fixed 800px width, centered
+          "md:left-1/2 md:-translate-x-1/2 md:w-[800px] md:px-6 md:py-4 md:rounded-full " +
+          // Mobile: full width minus margins
+          "left-4 right-4 px-4 sm:px-6 py-2 sm:py-4 rounded-full"
+        } bg-white/20 backdrop-blur-lg border border-white/10`}
+      >
+        <div className="flex items-center justify-between w-full">
           <div className="flex items-center space-x-2">
-            <Link href="/" className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity">
+            <Link
+              href="/"
+              className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
+            >
               <Image 
                 src="/images/xscard-logo.png" 
                 alt="XS Card Logo" 
@@ -151,18 +406,18 @@ export default function AdminDashboard() {
               />
             </Link>
           </div>
-          
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-3 sm:space-x-4">
+          {/* Desktop and Tablet Navigation (md and up) */}
+          <div className="hidden md:flex items-center space-x-6 xl:space-x-8">
             <Link
               href="/"
-              className="flex items-center space-x-2 text-white/90 hover:text-white transition-colors font-medium text-sm sm:text-base"
+              className="flex items-center space-x-2 text-white/90 hover:text-white transition-colors font-medium"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Back to Website</span>
             </Link>
+            <UserProfile />
           </div>
-
+          
           {/* Mobile Menu Button */}
           <div className="md:hidden mobile-menu-container">
             <Button
@@ -217,6 +472,9 @@ export default function AdminDashboard() {
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back to Website</span>
               </Link>
+              <div className="pt-2 border-t border-gray-200">
+                <UserProfile />
+              </div>
             </div>
           </div>
         </div>
@@ -282,49 +540,150 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
+                    {/* Filter Controls */}
+                    <div className="flex flex-col sm:flex-row gap-4 p-4 bg-white/5 rounded-lg border border-white/10">
+                      <div className="flex flex-col sm:flex-row gap-4 flex-1">
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium text-white/80 mb-2">Type</label>
+                          <select
+                            value={filters.type}
+                            onChange={(e) => handleFilterChange('type', e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-800/90 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          >
+                            <option value="" className="bg-slate-800 text-white">All Types</option>
+                            <option value="demo" className="bg-slate-800 text-white">Demo Requests</option>
+                            <option value="inquiry" className="bg-slate-800 text-white">Inquiries</option>
+                            <option value="call" className="bg-slate-800 text-white">Call Requests</option>
+                          </select>
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium text-white/80 mb-2">Status</label>
+                          <select
+                            value={filters.status}
+                            onChange={(e) => handleFilterChange('status', e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-800/90 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          >
+                            <option value="" className="bg-slate-800 text-white">All Status</option>
+                            <option value="pending" className="bg-slate-800 text-white">Pending</option>
+                            <option value="responded" className="bg-slate-800 text-white">Responded</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex items-end">
+                        <Button
+                          onClick={clearFilters}
+                          variant="outline"
+                          className="border-white/40 text-white hover:bg-white/10"
+                        >
+                          Clear Filters
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Refresh Button */}
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={fetchRequests}
+                        disabled={loading}
+                        variant="outline"
+                        className="border-white/40 text-white hover:bg-white/10"
+                      >
+                        <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                        Refresh
+                      </Button>
+                    </div>
+
                     {/* Requests List */}
                     <div className="grid gap-4 sm:gap-6">
-                      {requests.map((request) => (
-                        <Card
-                          key={request.id}
-                          className="bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/15 transition-all duration-300"
-                        >
-                          <CardContent className="p-4 sm:p-6">
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-4 sm:space-y-0">
-                              <div className="flex items-start space-x-3 sm:space-x-4">
-                                <div className="text-purple-400 mt-1">{getTypeIcon(request.type)}</div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-3">
-                                    <h3 className="text-base sm:text-lg font-semibold text-white truncate">{request.name}</h3>
-                                    <span
-                                      className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium w-fit ${getStatusColor(
-                                        request.status,
-                                      )}`}
-                                    >
-                                      {request.status}
-                                    </span>
+                      {loading && <p className="text-white/70 text-center py-8">Loading requests...</p>}
+                      {error && (
+                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-6 text-center">
+                          <p className="text-red-400 mb-4">{error}</p>
+                          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                            <Button
+                              onClick={fetchRequests}
+                              disabled={loading}
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                              Retry
+                            </Button>
+                            <Button
+                              onClick={testBackendConnection}
+                              variant="outline"
+                              className="border-blue-400/50 text-blue-400 hover:bg-blue-500/10"
+                            >
+                              Test Connection
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                console.log('🔍 Current API_BASE_URL:', API_BASE_URL)
+                                console.log('🔍 Current user:', auth.currentUser?.email)
+                                console.log('🔍 Current filters:', filters)
+                              }}
+                              variant="outline"
+                              className="border-red-400/50 text-red-400 hover:bg-red-500/10"
+                            >
+                              Debug Info
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      {!loading && !error && requests.length === 0 && (
+                        <p className="text-white/70 text-center py-8">No requests found.</p>
+                      )}
+                      {!loading && !error && requests.length > 0 && (
+                        <>
+                          {error && error.includes('demo data') && (
+                            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-4 text-center">
+                              <p className="text-yellow-400 text-sm">
+                                🎭 Showing demo data - Backend server unavailable
+                              </p>
+                            </div>
+                          )}
+                          {requests.map((request) => (
+                          <Card
+                            key={request.id}
+                            className="bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/15 transition-all duration-300"
+                          >
+                            <CardContent className="p-4 sm:p-6">
+                              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-4 sm:space-y-0">
+                                <div className="flex items-start space-x-3 sm:space-x-4">
+                                  <div className="text-purple-400 mt-1">{getTypeIcon(request.type)}</div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-3">
+                                      <h3 className="text-base sm:text-lg font-semibold text-white truncate">{request.name}</h3>
+                                      <span
+                                        className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium w-fit ${getStatusColor(
+                                          request.status,
+                                        )}`}
+                                      >
+                                        {request.status}
+                                      </span>
+                                    </div>
+                                    <p className="text-white/80 text-sm mb-2 break-all">{request.email}</p>
+                                    <p className="text-white/60 text-sm mb-3">{request.company}</p>
+                                    <p className="text-white/90 mb-3 text-sm sm:text-base">{request.message}</p>
+                                    <p className="text-white/50 text-xs">{request.date}</p>
                                   </div>
-                                  <p className="text-white/80 text-sm mb-2 break-all">{request.email}</p>
-                                  <p className="text-white/60 text-sm mb-3">{request.company}</p>
-                                  <p className="text-white/90 mb-3 text-sm sm:text-base">{request.message}</p>
-                                  <p className="text-white/50 text-xs">{request.date}</p>
+                                </div>
+                                <div className="flex justify-start sm:justify-end">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => setSelectedRequest(request)}
+                                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white w-full sm:w-auto"
+                                  >
+                                    <Reply className="w-4 h-4 mr-2" />
+                                    <span className="hidden sm:inline">Respond</span>
+                                    <span className="sm:hidden">Reply</span>
+                                  </Button>
                                 </div>
                               </div>
-                              <div className="flex justify-start sm:justify-end">
-                                <Button
-                                  size="sm"
-                                  onClick={() => setSelectedRequest(request)}
-                                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white w-full sm:w-auto"
-                                >
-                                  <Reply className="w-4 h-4 mr-2" />
-                                  <span className="hidden sm:inline">Respond</span>
-                                  <span className="sm:hidden">Reply</span>
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </>
+                      )}
                     </div>
 
                     {/* Response Modal */}
@@ -437,15 +796,15 @@ export default function AdminDashboard() {
                                 <Button
                                   onClick={handleUpload}
                                   disabled={isUploading}
-                                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
                                 >
                                   {isUploading ? (
                                     <div className="flex items-center space-x-2">
-                                      <RefreshCw className="w-4 h-4 animate-spin" />
-                                      <span>Uploading...</span>
+                                    <RefreshCw className="w-4 h-4 animate-spin" />
+                                    <span>Uploading...</span>
                                     </div>
                                   ) : (
-                                    "Deploy App"
+                                  "Deploy App"
                                   )}
                                 </Button>
                             </div>
@@ -465,15 +824,15 @@ export default function AdminDashboard() {
       <footer className="px-6 py-8 border-t border-white/10">
         <div className="max-w-7xl mx-auto text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <Image 
-              src="/images/xscard-logo.png" 
-              alt="XS Card Logo" 
-              width={100} 
-              height={32} 
-              className="h-8 w-auto" 
-            />
+                          <Image 
+                src="/images/xscard-logo.png" 
+                alt="XS Card Logo" 
+                width={100} 
+                height={32} 
+                className="h-8 w-auto" 
+              />
           </div>
-          <p className="text-white/60">&copy; 2024 XS Card Admin Dashboard. All rights reserved.</p>
+                      <p className="text-white/60">&copy; 2024 XS Card Admin Dashboard. All rights reserved.</p>
         </div>
       </footer>
     </div>

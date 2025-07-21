@@ -11,6 +11,7 @@ export interface ContactFormData {
   email: string;
   company?: string;
   message: string;
+  captchaToken?: string;
 }
 
 export interface SalesFormData {
@@ -22,6 +23,7 @@ export interface SalesFormData {
   budget?: string;
   timeline: string;
   requirements: string;
+  captchaToken?: string;
 }
 
 export interface QueryRequest {
@@ -29,6 +31,8 @@ export interface QueryRequest {
   email: string;
   message: string;
   to: string;
+  type?: string; // Add type field
+  captchaToken?: string;
 }
 
 // Environment-based configuration
@@ -42,6 +46,7 @@ const getApiBaseUrl = (): string => {
   // Auto-detect environment
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
+    console.log('🔍 DEBUG: API Config - Current hostname:', hostname);
     
     // Production detection
     if (hostname === 'xscard-app.onrender.com' || 
@@ -51,7 +56,17 @@ const getApiBaseUrl = (): string => {
         hostname.includes('netlify.app') ||
         hostname.includes('github.io') ||
         hostname.includes('firebaseapp.com')) {
+      console.log('🔍 DEBUG: API Config - Using production URL');
       return 'https://xscard-app.onrender.com';
+    }
+    
+    // Ngrok detection - when using ngrok for development
+    if (hostname.includes('ngrok-free.app') || hostname.includes('ngrok.io')) {
+      console.log('🔍 DEBUG: API Config - Using Render production URL (ngrok detected)');
+      // Temporarily pointing to production backend while in development
+      return 'https://xscard-app.onrender.com';
+     // return 'http://localhost:8383';
+
     }
     
     // Localhost or development domains
@@ -60,7 +75,9 @@ const getApiBaseUrl = (): string => {
         hostname.includes('.local') ||
         hostname.includes('dev.') ||
         hostname.includes('staging.')) {
-      return 'http://localhost:8383';
+      console.log('🔍 DEBUG: API Config - Using Render production URL (localhost detected)');
+      // Temporarily pointing to production backend while in development
+      return 'https://xscard-app.onrender.com';
     }
   }
   
@@ -70,12 +87,15 @@ const getApiBaseUrl = (): string => {
       return 'https://xscard-app.onrender.com';
     }
     if (process.env.NODE_ENV === 'development') {
-      return 'http://localhost:8383';
+      console.log('🔍 DEBUG: API Config - Using Render production URL (development env)');
+      // Temporarily pointing to production backend while in development
+      return 'https://xscard-app.onrender.com';
     }
   }
   
-  // Default to development for safety
-  return 'http://localhost:8383';
+  // Default to production for safety (temporary)
+  console.log('🔍 DEBUG: API Config - Using Render production URL (fallback)');
+  return 'https://xscard-app.onrender.com';
 };
 
 // Base URL configuration
@@ -84,6 +104,16 @@ export const API_BASE_URL = getApiBaseUrl();
 // Environment detection
 export const isDevelopment = API_BASE_URL.includes('localhost');
 export const isProduction = !isDevelopment;
+
+// Log the final API configuration for debugging
+if (typeof window !== 'undefined') {
+  console.log('🔍 API Configuration:', {
+    baseUrl: API_BASE_URL,
+    hostname: window.location.hostname,
+    isDevelopment,
+    isProduction
+  });
+}
 
 // API endpoints
 export const API_ENDPOINTS = {
@@ -173,6 +203,11 @@ async function apiRequest<T>(
  * Submit a general contact form query
  */
 export async function submitQuery(data: QueryRequest): Promise<ApiResponse> {
+  console.log('🔍 Submitting query with data:', {
+    ...data,
+    captchaToken: data.captchaToken ? `${data.captchaToken.substring(0, 20)}...` : 'undefined'
+  });
+  
   return apiRequest<ApiResponse>(API_ENDPOINTS.SUBMIT_QUERY, {
     method: 'POST',
     body: JSON.stringify(data),
@@ -197,7 +232,9 @@ ${formData.message}`;
     name: formData.name,
     email: formData.email,
     message: messageContent,
-    to: "xscard@xspark.co.za"
+    to: "xscard@xspark.co.za",
+    type: "contact", // Add type field
+    captchaToken: formData.captchaToken,
   };
 
   return submitQuery(requestData);
@@ -227,7 +264,9 @@ ${formData.requirements}`;
     name: formData.name,
     email: formData.email,
     message: messageContent,
-    to: "xscard@xspark.co.za"
+    to: "xscard@xspark.co.za",
+    type: "inquiry", // Add type field
+    captchaToken: formData.captchaToken,
   };
 
   return submitQuery(requestData);
@@ -292,6 +331,31 @@ export async function getAnalytics(token?: string): Promise<ApiResponse> {
     method: 'GET',
     headers,
   });
+}
+
+/**
+ * Verify hCaptcha token on server side
+ * This is CRITICAL for production security
+ */
+export async function verifyHCaptchaToken(token: string): Promise<boolean> {
+  try {
+    const response = await fetch('https://api.hcaptcha.com/siteverify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        secret: process.env.HCAPTCHA_SECRET_KEY || '', // You'll need to add this to your backend
+        response: token,
+      }),
+    });
+
+    const data = await response.json();
+    return data.success === true;
+  } catch (error) {
+    console.error('hCaptcha verification failed:', error);
+    return false;
+  }
 }
 
 // Utility functions for common operations
