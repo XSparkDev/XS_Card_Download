@@ -25,6 +25,8 @@ import Link from "next/link"
 import { UserProfile } from "@/components/auth/user-profile"
 import { auth } from "@/lib/firebase"
 import { API_BASE_URL } from "@/utils/api"
+import { useToast } from "@/hooks/use-toast"
+import { Toaster } from "@/components/ui/toaster"
 
 interface CustomerRequest {
   id: number;
@@ -38,6 +40,7 @@ interface CustomerRequest {
 }
 
 export default function AdminDashboard() {
+  const { toast } = useToast()
   const [activeTab, setActiveTab] = useState<"requests" | "uploads">("requests")
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [requests, setRequests] = useState<CustomerRequest[]>([])
@@ -52,6 +55,49 @@ export default function AdminDashboard() {
     type: "",
     status: ""
   })
+  const [currentPage, setCurrentPage] = useState(1)
+  const requestsPerPage = 5
+  const [accessDenied, setAccessDenied] = useState(false)
+  
+  // Domain restriction check
+  useEffect(() => {
+    const checkDomainAccess = () => {
+      const user = auth.currentUser
+      if (user && user.email) {
+        const emailDomain = user.email.split('@')[1]?.toLowerCase()
+        if (emailDomain !== 'xspark.co.za') {
+          setAccessDenied(true)
+          toast({
+            title: "Access Denied",
+            description: "You don't have permission to access this area.",
+            variant: "destructive",
+          })
+        }
+      }
+    }
+
+    // Check immediately
+    checkDomainAccess()
+
+    // Listen for auth state changes
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user && user.email) {
+        const emailDomain = user.email.split('@')[1]?.toLowerCase()
+        if (emailDomain !== 'xspark.co.za') {
+          setAccessDenied(true)
+          toast({
+            title: "Access Denied",
+            description: "You don't have permission to access this area.",
+            variant: "destructive",
+          })
+        } else {
+          setAccessDenied(false)
+        }
+      }
+    })
+
+    return () => unsubscribe()
+  }, [toast])
   
   // Mock data for when backend is unavailable
   const mockRequests: CustomerRequest[] = [
@@ -89,6 +135,11 @@ export default function AdminDashboard() {
 
   // Fetch requests from API
   const fetchRequests = async () => {
+    // Don't fetch if access is denied
+    if (accessDenied) {
+      return
+    }
+    
     setLoading(true)
     setError(null)
     
@@ -201,6 +252,18 @@ export default function AdminDashboard() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showMobileMenu])
 
+  // Handle modal keyboard events
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (selectedRequest && event.key === 'Escape') {
+        setSelectedRequest(null)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [selectedRequest])
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file && file.name.endsWith(".apk")) {
@@ -210,6 +273,11 @@ export default function AdminDashboard() {
 
   const handleUpload = async () => {
     if (!uploadFile) return
+    
+    // Don't upload if access is denied
+    if (accessDenied) {
+      return
+    }
 
     setIsUploading(true)
     setUploadProgress(0)
@@ -230,13 +298,18 @@ export default function AdminDashboard() {
       formData.append('file', uploadFile)
       
       // Make API call to upload APK
+      console.log('🔍 Uploading APK to:', `${API_BASE_URL}/upload-apk`)
+      console.log('🔍 File size:', uploadFile.size, 'bytes')
+      console.log('🔍 File name:', uploadFile.name)
+      
       const response = await fetch(`${API_BASE_URL}/upload-apk`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${idToken}`
           // Don't set Content-Type for FormData, let browser set it with boundary
         },
-        body: formData
+        body: formData,
+        mode: 'cors' // Explicitly set CORS mode
       })
 
       if (!response.ok) {
@@ -251,17 +324,25 @@ export default function AdminDashboard() {
         setUploadProgress(100)
         setUploadFile(null)
         
-        // Show success message
-        console.log('APK uploaded successfully:', result.data)
-        
-        // You could add a success toast notification here
-        // or redirect to a success page
+        // Show success toast
+        toast({
+          title: "APK Uploaded Successfully!",
+          description: "Your app has been deployed successfully.",
+          variant: "default",
+        })
       } else {
         throw new Error(result.message || 'Failed to upload APK')
       }
     } catch (error) {
       console.error('Error uploading APK:', error)
       setError(error instanceof Error ? error.message : 'Failed to upload APK')
+      
+      // Show error toast
+      toast({
+        title: "Upload Failed",
+        description: error instanceof Error ? error.message : 'Failed to upload APK',
+        variant: "destructive",
+      })
     } finally {
       setIsUploading(false)
     }
@@ -270,10 +351,20 @@ export default function AdminDashboard() {
   const handleResponse = async (requestId: number) => {
     if (!responseText.trim()) return
     
+    // Don't respond if access is denied
+    if (accessDenied) {
+      return
+    }
+    
     try {
       const user = auth.currentUser
       if (!user) {
         setError('User not authenticated')
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again to send responses.",
+          variant: "destructive",
+        })
         return
       }
 
@@ -309,14 +400,25 @@ export default function AdminDashboard() {
         setSelectedRequest(null)
         setResponseText("")
         
-        // Show success message (you could add a toast notification here)
-        console.log('Response sent successfully')
+        // Show success toast
+        toast({
+          title: "Response Sent Successfully!",
+          description: "Your response has been sent to the customer.",
+          variant: "default",
+        })
       } else {
         throw new Error(result.message || 'Failed to send response')
       }
     } catch (error) {
       console.error('Error responding to request:', error)
       setError(error instanceof Error ? error.message : 'Failed to send response')
+      
+      // Show error toast
+      toast({
+        title: "Failed to Send Response",
+        description: error instanceof Error ? error.message : 'An unexpected error occurred.',
+        variant: "destructive",
+      })
     }
   }
 
@@ -344,39 +446,167 @@ export default function AdminDashboard() {
     }
   }
 
+  // Function to format the message content
+  const formatMessage = (message: string) => {
+    // Split the message by lines and format each section
+    const lines = message.split('\n').filter(line => line.trim())
+    
+    return lines.map((line, index) => {
+      const trimmedLine = line.trim()
+      
+      // Check if it's a section header (ends with ':')
+      if (trimmedLine.endsWith(':')) {
+        return (
+          <div key={index} className="font-semibold text-purple-300 mb-2 mt-4 first:mt-0">
+            {trimmedLine}
+          </div>
+        )
+      }
+      
+      // Check if it's a bullet point (starts with '-')
+      if (trimmedLine.startsWith('-')) {
+        return (
+          <div key={index} className="ml-4 mb-1 flex items-start">
+            <span className="text-purple-400 mr-2">•</span>
+            <span className="text-white/90">{trimmedLine.substring(1).trim()}</span>
+          </div>
+        )
+      }
+      
+      // Check if it's a numbered item (starts with number and period)
+      if (/^\d+\./.test(trimmedLine)) {
+        return (
+          <div key={index} className="ml-4 mb-1 flex items-start">
+            <span className="text-purple-400 mr-2 font-medium">
+              {trimmedLine.match(/^\d+\./)?.[0]}
+            </span>
+            <span className="text-white/90">
+              {trimmedLine.replace(/^\d+\.\s*/, '')}
+            </span>
+          </div>
+        )
+      }
+      
+      // Regular text
+      return (
+        <div key={index} className="mb-2 text-white/90">
+          {trimmedLine}
+        </div>
+      )
+    })
+  }
+
   const handleFilterChange = (filterType: 'type' | 'status', value: string) => {
     setFilters(prev => ({
       ...prev,
       [filterType]: value
     }))
+    setCurrentPage(1) // Reset to first page when filters change
   }
 
   const clearFilters = () => {
     setFilters({ type: "", status: "" })
+    setCurrentPage(1) // Reset to first page when clearing filters
+  }
+
+  // Pagination logic
+  const indexOfLastRequest = currentPage * requestsPerPage
+  const indexOfFirstRequest = indexOfLastRequest - requestsPerPage
+  const currentRequests = requests.slice(indexOfFirstRequest, indexOfLastRequest)
+  const totalPages = Math.ceil(requests.length / requestsPerPage)
+
+  // Simple modal opening
+  const openResponseModal = (request: CustomerRequest) => {
+    setSelectedRequest(request)
   }
 
   // Test backend connection
   const testBackendConnection = async () => {
     console.log('🔍 Testing backend connection...')
+    
+    // Test health endpoint
     try {
-      const response = await fetch(`${API_BASE_URL}/health`, {
+      const healthResponse = await fetch(`${API_BASE_URL}/health`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        mode: 'cors'
       })
       
-      if (response.ok) {
-        console.log('✅ Backend is reachable')
-        alert('Backend is reachable! Try refreshing the page.')
+      if (healthResponse.ok) {
+        console.log('✅ Health endpoint is reachable')
+        
+        // Test upload endpoint with OPTIONS request
+        try {
+          const optionsResponse = await fetch(`${API_BASE_URL}/upload-apk`, {
+            method: 'OPTIONS',
+            mode: 'cors'
+          })
+          
+          console.log('🔍 Upload endpoint OPTIONS response:', {
+            status: optionsResponse.status,
+            headers: Object.fromEntries(optionsResponse.headers.entries())
+          })
+          
+          toast({
+            title: "Backend Connection Successful",
+            description: "Both health and upload endpoints are accessible.",
+            variant: "default",
+          })
+        } catch (uploadError) {
+          console.log('⚠️ Upload endpoint test failed:', uploadError)
+          toast({
+            title: "Partial Backend Access",
+            description: "Health endpoint works but upload endpoint has issues.",
+            variant: "destructive",
+          })
+        }
       } else {
-        console.log('⚠️ Backend responded with status:', response.status)
-        alert(`Backend responded with status: ${response.status}`)
+        console.log('⚠️ Health endpoint responded with status:', healthResponse.status)
+        toast({
+          title: "Backend Connection Warning",
+          description: `Health endpoint responded with status: ${healthResponse.status}`,
+          variant: "destructive",
+        })
       }
     } catch (error) {
       console.log('❌ Backend connection failed:', error)
-      alert('Backend connection failed. Please check if the server is running on port 8383.')
+      toast({
+        title: "Backend Connection Failed",
+        description: "Cannot connect to backend server. This might be a CORS issue.",
+        variant: "destructive",
+      })
     }
+  }
+
+  // Show access denied screen if user doesn't have proper domain
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Shield className="w-8 h-8 text-red-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-4">Access Denied</h1>
+          <p className="text-white/70 mb-6">
+            You don't have permission to access this area.
+          </p>
+          <div className="space-y-3">
+            <p className="text-white/60 text-sm">
+              Current user: {auth.currentUser?.email || 'Not signed in'}
+            </p>
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium rounded-lg transition-all duration-300"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Website
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -572,8 +802,7 @@ export default function AdminDashboard() {
                       <div className="flex items-end">
                         <Button
                           onClick={clearFilters}
-                          variant="outline"
-                          className="border-white/40 text-white hover:bg-white/10"
+                          className="bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
                         >
                           Clear Filters
                         </Button>
@@ -585,8 +814,7 @@ export default function AdminDashboard() {
                       <Button
                         onClick={fetchRequests}
                         disabled={loading}
-                        variant="outline"
-                        className="border-white/40 text-white hover:bg-white/10"
+                        className="bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
                       >
                         <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                         Refresh
@@ -611,7 +839,7 @@ export default function AdminDashboard() {
                             <Button
                               onClick={testBackendConnection}
                               variant="outline"
-                              className="border-blue-400/50 text-blue-400 hover:bg-blue-500/10"
+                              className="border-blue-400 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200 font-medium"
                             >
                               Test Connection
                             </Button>
@@ -622,7 +850,7 @@ export default function AdminDashboard() {
                                 console.log('🔍 Current filters:', filters)
                               }}
                               variant="outline"
-                              className="border-red-400/50 text-red-400 hover:bg-red-500/10"
+                              className="border-red-400 text-red-300 hover:bg-red-500/20 hover:text-red-200 font-medium"
                             >
                               Debug Info
                             </Button>
@@ -641,7 +869,7 @@ export default function AdminDashboard() {
                               </p>
                             </div>
                           )}
-                          {requests.map((request) => (
+                          {currentRequests.map((request) => (
                           <Card
                             key={request.id}
                             className="bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/15 transition-all duration-300"
@@ -663,15 +891,17 @@ export default function AdminDashboard() {
                                     </div>
                                     <p className="text-white/80 text-sm mb-2 break-all">{request.email}</p>
                                     <p className="text-white/60 text-sm mb-3">{request.company}</p>
-                                    <p className="text-white/90 mb-3 text-sm sm:text-base">{request.message}</p>
+                                    <div className="text-white/90 text-sm sm:text-base">
+                                      {formatMessage(request.message)}
+                                    </div>
                                     <p className="text-white/50 text-xs">{request.date}</p>
                                   </div>
                                 </div>
                                 <div className="flex justify-start sm:justify-end">
                                   <Button
                                     size="sm"
-                                    onClick={() => setSelectedRequest(request)}
-                                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white w-full sm:w-auto"
+                                    onClick={() => openResponseModal(request)}
+                                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 w-full sm:w-auto"
                                   >
                                     <Reply className="w-4 h-4 mr-2" />
                                     <span className="hidden sm:inline">Respond</span>
@@ -682,20 +912,73 @@ export default function AdminDashboard() {
                             </CardContent>
                           </Card>
                         ))}
+                        
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-center space-x-2 mt-6">
+                            <Button
+                              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                              disabled={currentPage === 1}
+                              variant="outline"
+                              size="sm"
+                              className="bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
+                            >
+                              Previous
+                            </Button>
+                            
+                            <div className="flex items-center space-x-1">
+                              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <button
+                                  key={page}
+                                  onClick={() => setCurrentPage(page)}
+                                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                                    currentPage === page
+                                      ? 'bg-purple-600 text-white'
+                                      : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+                                  }`}
+                                >
+                                  {page}
+                                </button>
+                              ))}
+                            </div>
+                            
+                            <Button
+                              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                              disabled={currentPage === totalPages}
+                              variant="outline"
+                              size="sm"
+                              className="bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
+                            >
+                              Next
+                            </Button>
+                          </div>
+                        )}
+                        
+                        <div className="text-center text-white/60 text-sm mt-4">
+                          Showing {indexOfFirstRequest + 1}-{Math.min(indexOfLastRequest, requests.length)} of {requests.length} requests
+                        </div>
                       </>
                       )}
                     </div>
 
                     {/* Response Modal */}
                     {selectedRequest && (
-                      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                      <div className="fixed inset-0 z-[100] overflow-y-auto">
                         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSelectedRequest(null)}></div>
-                        <div className="relative bg-white/25 backdrop-blur-lg border border-white/30 rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+                        <div 
+                          id="response-modal"
+                          className="absolute bg-white/25 backdrop-blur-lg border border-white/30 rounded-2xl p-6 max-w-md w-full max-h-[calc(100vh-4rem)] overflow-y-auto shadow-2xl"
+                          role="dialog"
+                          aria-modal="true"
+                          aria-labelledby="modal-title"
+                          style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+                        >
                           <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-bold text-white">Respond to {selectedRequest.name}</h3>
+                            <h3 id="modal-title" className="text-xl font-bold text-white">Respond to {selectedRequest.name}</h3>
                             <button
-                          onClick={() => setSelectedRequest(null)}
-                              className="text-white/70 hover:text-white transition-colors"
+                              onClick={() => setSelectedRequest(null)}
+                              className="text-white/70 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
+                              aria-label="Close modal"
                             >
                               <X className="w-5 h-5" />
                             </button>
@@ -715,14 +998,13 @@ export default function AdminDashboard() {
                               <Button
                                 onClick={() => handleResponse(selectedRequest.id)}
                                 disabled={!responseText.trim()}
-                                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
                               >
                                 Send Response
                               </Button>
                               <Button
-                                variant="outline"
                                 onClick={() => setSelectedRequest(null)}
-                                className="flex-1 border-white/40 text-white hover:bg-white/10"
+                                className="flex-1 bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
                               >
                                 Cancel
                               </Button>
@@ -835,6 +1117,9 @@ export default function AdminDashboard() {
                       <p className="text-white/60">&copy; 2024 XS Card Admin Dashboard. All rights reserved.</p>
         </div>
       </footer>
+      
+      {/* Toast Notifications */}
+      <Toaster />
     </div>
   )
 }
