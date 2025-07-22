@@ -344,6 +344,56 @@ export default function AdminDashboard() {
     }
   }
 
+  // Function to format the message content
+  const formatMessage = (message: string) => {
+    // Split the message by lines and format each section
+    const lines = message.split('\n').filter(line => line.trim())
+    
+    return lines.map((line, index) => {
+      const trimmedLine = line.trim()
+      
+      // Check if it's a section header (ends with ':')
+      if (trimmedLine.endsWith(':')) {
+        return (
+          <div key={index} className="font-semibold text-purple-300 mb-2 mt-4 first:mt-0">
+            {trimmedLine}
+          </div>
+        )
+      }
+      
+      // Check if it's a bullet point (starts with '-')
+      if (trimmedLine.startsWith('-')) {
+        return (
+          <div key={index} className="ml-4 mb-1 flex items-start">
+            <span className="text-purple-400 mr-2">•</span>
+            <span className="text-white/90">{trimmedLine.substring(1).trim()}</span>
+          </div>
+        )
+      }
+      
+      // Check if it's a numbered item (starts with number and period)
+      if (/^\d+\./.test(trimmedLine)) {
+        return (
+          <div key={index} className="ml-4 mb-1 flex items-start">
+            <span className="text-purple-400 mr-2 font-medium">
+              {trimmedLine.match(/^\d+\./)?.[0]}
+            </span>
+            <span className="text-white/90">
+              {trimmedLine.replace(/^\d+\.\s*/, '')}
+            </span>
+          </div>
+        )
+      }
+      
+      // Regular text
+      return (
+        <div key={index} className="mb-2 text-white/90">
+          {trimmedLine}
+        </div>
+      )
+    })
+  }
+
   const handleFilterChange = (filterType: 'type' | 'status', value: string) => {
     setFilters(prev => ({
       ...prev,
@@ -572,8 +622,7 @@ export default function AdminDashboard() {
                       <div className="flex items-end">
                         <Button
                           onClick={clearFilters}
-                          variant="outline"
-                          className="border-white/40 text-white hover:bg-white/10"
+                          className="bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
                         >
                           Clear Filters
                         </Button>
@@ -585,8 +634,7 @@ export default function AdminDashboard() {
                       <Button
                         onClick={fetchRequests}
                         disabled={loading}
-                        variant="outline"
-                        className="border-white/40 text-white hover:bg-white/10"
+                        className="bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
                       >
                         <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                         Refresh
@@ -611,7 +659,7 @@ export default function AdminDashboard() {
                             <Button
                               onClick={testBackendConnection}
                               variant="outline"
-                              className="border-blue-400/50 text-blue-400 hover:bg-blue-500/10"
+                              className="border-blue-400 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200 font-medium"
                             >
                               Test Connection
                             </Button>
@@ -622,7 +670,7 @@ export default function AdminDashboard() {
                                 console.log('🔍 Current filters:', filters)
                               }}
                               variant="outline"
-                              className="border-red-400/50 text-red-400 hover:bg-red-500/10"
+                              className="border-red-400 text-red-300 hover:bg-red-500/20 hover:text-red-200 font-medium"
                             >
                               Debug Info
                             </Button>
@@ -663,7 +711,9 @@ export default function AdminDashboard() {
                                     </div>
                                     <p className="text-white/80 text-sm mb-2 break-all">{request.email}</p>
                                     <p className="text-white/60 text-sm mb-3">{request.company}</p>
-                                    <p className="text-white/90 mb-3 text-sm sm:text-base">{request.message}</p>
+                                    <div className="text-white/90 text-sm sm:text-base">
+                                      {formatMessage(request.message)}
+                                    </div>
                                     <p className="text-white/50 text-xs">{request.date}</p>
                                   </div>
                                 </div>
@@ -671,7 +721,7 @@ export default function AdminDashboard() {
                                   <Button
                                     size="sm"
                                     onClick={() => setSelectedRequest(request)}
-                                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white w-full sm:w-auto"
+                                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 w-full sm:w-auto"
                                   >
                                     <Reply className="w-4 h-4 mr-2" />
                                     <span className="hidden sm:inline">Respond</span>
@@ -715,14 +765,13 @@ export default function AdminDashboard() {
                               <Button
                                 onClick={() => handleResponse(selectedRequest.id)}
                                 disabled={!responseText.trim()}
-                                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
                               >
                                 Send Response
                               </Button>
                               <Button
-                                variant="outline"
                                 onClick={() => setSelectedRequest(null)}
-                                className="flex-1 border-white/40 text-white hover:bg-white/10"
+                                className="flex-1 bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
                               >
                                 Cancel
                               </Button>
