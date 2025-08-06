@@ -237,7 +237,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <Button
                     type="submit"
                     disabled={loading || !loginForm.email || !loginForm.password}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                    className="w-full bg-custom-btn-gradient hover:opacity-90 text-white transition-opacity"
                   >
                     {loading ? (
                       <div className="flex items-center space-x-2">
@@ -332,7 +332,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <Button
                     type="submit"
                     disabled={loading || !registerForm.email || !registerForm.password || !registerForm.confirmPassword}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                    className="w-full bg-custom-btn-gradient hover:opacity-90 text-white transition-opacity"
                   >
                     {loading ? (
                       <div className="flex items-center space-x-2">

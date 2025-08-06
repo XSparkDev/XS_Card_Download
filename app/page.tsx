@@ -122,6 +122,10 @@ export default function HomePage() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   
+  // Download captcha state
+  const [isDownloadCaptchaVerified, setIsDownloadCaptchaVerified] = useState(false)
+  const [downloadCaptchaToken, setDownloadCaptchaToken] = useState<string | null>(null)
+  
   // Enterprise Sales Form State
   const [enterpriseForm, setEnterpriseForm] = useState<EnterpriseSalesForm>({
     name: "",
@@ -344,7 +348,20 @@ export default function HomePage() {
     }
   }
 
+  const handleDownloadCaptchaVerify = (verified: boolean, token?: string) => {
+    setIsDownloadCaptchaVerified(verified)
+    if (verified && token) {
+      setDownloadCaptchaToken(token)
+    } else {
+      setDownloadCaptchaToken(null)
+      setIsDownloadCaptchaVerified(false)
+    }
+  }
+
   const handleApkDownload = () => {
+    if (!isDownloadCaptchaVerified || !downloadCaptchaToken) {
+      return // Don't allow download without captcha verification and token
+    }
     const downloadUrl = getApkDownloadUrl()
     window.open(downloadUrl, '_blank')
   }
@@ -638,9 +655,9 @@ export default function HomePage() {
             >
               Contact
             </button>
-            {isAuthenticated && <UserProfile />}
+            {isAuthenticated && <UserProfile isOverLightSection={isOverLightSection} isScrolled={isScrolled} />}
             <Button
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 px-4 sm:px-6 xl:px-8 text-sm sm:text-base"
+              className="bg-custom-btn-gradient hover:opacity-90 text-white border-0 px-4 sm:px-6 xl:px-8 text-sm sm:text-base transition-opacity"
               onClick={openModal}
             >
               Download
@@ -728,11 +745,11 @@ export default function HomePage() {
               </button>
               {isAuthenticated && (
                 <div className="pt-2 border-t border-gray-200">
-                  <UserProfile />
+                  <UserProfile isOverLightSection={isOverLightSection} isScrolled={isScrolled} />
                 </div>
               )}
               <Button
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                className="w-full bg-custom-btn-gradient hover:opacity-90 text-white transition-opacity"
                 onClick={() => {
                   openModal()
                   setShowMobileMenu(false)
@@ -766,7 +783,7 @@ export default function HomePage() {
           <div className="flex justify-center items-center animate-fade-in-up animation-delay-600">
             <Button
               size="lg"
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold shadow-2xl"
+              className="bg-custom-btn-gradient hover:opacity-90 text-white px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold shadow-2xl transition-opacity"
               onClick={openModal}
             >
               Get Started Free
@@ -900,7 +917,7 @@ export default function HomePage() {
                   </li>
                 </ul>
                 <Button
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                  className="w-full bg-custom-btn-gradient hover:opacity-90 text-white transition-opacity"
                   onClick={openModal}
                 >
                   Get Started Free
@@ -911,7 +928,7 @@ export default function HomePage() {
             {/* Premium Plan */}
             <Card className="bg-white border-2 border-purple-500 hover:border-purple-600 transition-all duration-300 relative">
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-1">
+                <Badge className="bg-custom-btn-gradient text-white px-4 py-1">
                   Most Popular
                 </Badge>
               </div>
@@ -957,7 +974,7 @@ export default function HomePage() {
                   </li>
                 </ul>
                 <Button
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                  className="w-full bg-custom-btn-gradient hover:opacity-90 text-white transition-opacity"
                                       onClick={navigateToPremiumTrial}
                 >
                   Start Premium Trial
@@ -1009,7 +1026,7 @@ export default function HomePage() {
                   </li>
                 </ul>
                 <Button
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                  className="w-full bg-custom-btn-gradient hover:opacity-90 text-white transition-opacity"
                   onClick={openEnterpriseModal}
                 >
                   Contact Sales
@@ -1063,7 +1080,7 @@ export default function HomePage() {
                 <div className="flex justify-center">
                   <Button
                     size="lg"
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-4 text-lg font-semibold"
+                    className="bg-custom-btn-gradient hover:opacity-90 text-white px-8 py-4 text-lg font-semibold transition-opacity"
                     onClick={openModal}
                   >
                     Start Your Free Trial
@@ -1169,23 +1186,28 @@ export default function HomePage() {
             </div>
 
             {/* Download Options */}
-            <div className="mb-8">
+            <div className="mb-6">
               <h4 className="text-lg font-semibold text-white mb-4">📱 Download Our App</h4>
               <div className="grid grid-cols-2 gap-4">
-                <button 
-                  onClick={() => window.open('https://xscard-app.onrender.com/download-apk', '_blank')}
-                  className={`transition-all duration-300 group shadow-lg rounded-lg p-4 border relative ${
-                  device.isAndroid 
-                    ? 'bg-white/30 border-white/60 ring-2 ring-purple-400/50' 
-                    : 'bg-white/20 hover:bg-white/30 border-white/40'
-                } backdrop-blur-sm`}>
+                                <button
+                  onClick={handleApkDownload}
+                  disabled={!isDownloadCaptchaVerified || !downloadCaptchaToken}
+                  className={`transition-all duration-300 group shadow-lg rounded-lg p-4 border relative backdrop-blur-sm ${
+                    device.isAndroid
+                      ? isDownloadCaptchaVerified && downloadCaptchaToken
+                        ? 'bg-white/30 border-white/60 ring-2 ring-purple-400/50 hover:bg-white/40'
+                        : 'bg-white/20 border-white/40 opacity-60 cursor-not-allowed'
+                      : isDownloadCaptchaVerified && downloadCaptchaToken
+                        ? 'bg-white/20 hover:bg-white/30 border-white/40'
+                        : 'bg-white/10 border-white/30 opacity-60 cursor-not-allowed'
+                  } ${!isDownloadCaptchaVerified || !downloadCaptchaToken ? 'cursor-not-allowed' : ''}`}>
                   {device.isAndroid && (
-                    <div className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                    <div className="absolute -top-2 -right-2 bg-custom-btn-gradient text-white text-xs px-2 py-1 rounded-full font-medium">
                       Recommended
                     </div>
                   )}
                   <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center shadow-md">
+                    <div className="w-8 h-8 bg-custom-btn-gradient rounded-lg flex items-center justify-center shadow-md">
                       <PlatformIcon platform="android" className="w-4 h-4 text-white" />
                     </div>
                     <div className="text-left">
@@ -1215,10 +1237,21 @@ export default function HomePage() {
               </div>
             </div>
 
+            {/* Security Verification */}
+                      <div className="mb-6">
+            <XSCardCaptcha
+              onVerify={handleDownloadCaptchaVerify}
+              isOverLightSection={isOverLightSection}
+            />
+          </div>
+
             {/* Additional Info */}
             <div className="text-center">
               <p className="text-xs text-white/80 font-medium drop-shadow-sm">
-                Start creating your digital business card in minutes. No credit card required for free plan.
+                {!isDownloadCaptchaVerified || !downloadCaptchaToken
+                  ? "Please complete security verification to enable download."
+                  : "Start creating your digital business card in minutes. No credit card required for free plan."
+                }
               </p>
             </div>
           </div>
@@ -1372,7 +1405,7 @@ export default function HomePage() {
                   disabled={
                     isSubmitting || !formData.name || !formData.email || !formData.message || submitStatus === "success"
                   }
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                  className="w-full bg-custom-btn-gradient hover:opacity-90 text-white transition-opacity"
                 >
                   {isSubmitting ? (
                     <div className="flex items-center space-x-2">
@@ -1657,7 +1690,7 @@ export default function HomePage() {
               <Button
                 type="submit"
                 disabled={isEnterpriseSubmitting || enterpriseSubmitStatus === "success"}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 text-lg font-semibold"
+                className="w-full bg-custom-btn-gradient hover:opacity-90 text-white py-3 text-lg font-semibold transition-opacity"
               >
                 {isEnterpriseSubmitting ? (
                   <div className="flex items-center space-x-2">

@@ -28,6 +28,9 @@ import { API_BASE_URL } from "@/utils/api"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 
+// Force dynamic rendering to prevent static export issues
+export const dynamic = 'force-dynamic'
+
 interface CustomerRequest {
   id: number;
   type: "demo" | "inquiry" | "call";
@@ -58,8 +61,16 @@ export default function AdminDashboard() {
   const [currentPage, setCurrentPage] = useState(1)
   const requestsPerPage = 5
   const [accessDenied, setAccessDenied] = useState(false)
+  const [modalPosition, setModalPosition] = useState<{ top: string; left: string; transform: string; scale: string; opacity: string }>({ 
+    top: '50%', 
+    left: '50%', 
+    transform: 'translate(-50%, -50%)',
+    scale: '0.8',
+    opacity: '0'
+  })
+  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set())
   
-  // Domain restriction check
+  // Authentication and domain restriction check
   useEffect(() => {
     const checkDomainAccess = () => {
       const user = auth.currentUser
@@ -81,6 +92,21 @@ export default function AdminDashboard() {
 
     // Listen for auth state changes
     const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user) {
+        // User signed out - redirect to home page
+        console.log('🔐 User signed out, redirecting to home page')
+        toast({
+          title: "Signed out",
+          description: "You have been signed out. Redirecting to home page...",
+        })
+        
+        // Redirect after a short delay to show the toast
+        setTimeout(() => {
+          window.location.href = '/'
+        }, 1500)
+        return
+      }
+
       if (user && user.email) {
         const emailDomain = user.email.split('@')[1]?.toLowerCase()
         if (emailDomain !== 'xspark.co.za') {
@@ -238,6 +264,22 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchRequests()
   }, [filters])
+  
+  // Prevent scrolling when modal is open
+  useEffect(() => {
+    if (selectedRequest) {
+      // Prevent body scrolling
+      document.body.style.overflow = 'hidden'
+    } else {
+      // Restore scrolling
+      document.body.style.overflow = ''
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [selectedRequest])
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -515,9 +557,71 @@ export default function AdminDashboard() {
   const currentRequests = requests.slice(indexOfFirstRequest, indexOfLastRequest)
   const totalPages = Math.ceil(requests.length / requestsPerPage)
 
-  // Simple modal opening
-  const openResponseModal = (request: CustomerRequest) => {
+  // Modal opening with smooth emergence from button
+  const toggleExpanded = (requestId: number) => {
+    setExpandedItems(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(requestId)) {
+        newSet.delete(requestId)
+      } else {
+        newSet.add(requestId)
+      }
+      return newSet
+    })
+  }
+
+  const openResponseModal = (request: CustomerRequest, event?: React.MouseEvent) => {
     setSelectedRequest(request)
+    
+    if (event) {
+      try {
+        const buttonElement = event.currentTarget as HTMLElement
+        const buttonRect = buttonElement.getBoundingClientRect()
+        
+        console.log('🔍 Button position:', { 
+          top: buttonRect.top, 
+          bottom: buttonRect.bottom,
+          left: buttonRect.left,
+          width: buttonRect.width
+        })
+        
+        // Position modal to emerge from the button
+        const buttonCenterX = buttonRect.left + buttonRect.width / 2
+        const buttonCenterY = buttonRect.top + buttonRect.height / 2
+        
+        // Start position (emerging from button)
+        const startPosition = {
+          top: `${buttonCenterY}px`,
+          left: `${buttonCenterX}px`,
+          transform: 'translate(-50%, -50%)',
+          scale: '0.1',
+          opacity: '0'
+        }
+        
+        // Set initial position (emerging from button)
+        setModalPosition(startPosition)
+        
+        // Animate to final position after a brief delay
+        setTimeout(() => {
+          const finalPosition = {
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            scale: '1',
+            opacity: '1'
+          }
+          setModalPosition(finalPosition)
+        }, 10) // Small delay to ensure smooth transition
+        
+      } catch (error) {
+        console.error('Error calculating modal position:', error)
+        // Fallback to center if calculation fails
+        setModalPosition({ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', scale: '1', opacity: '1' })
+      }
+    } else {
+      // Fallback to center if no event
+      setModalPosition({ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', scale: '1', opacity: '1' })
+    }
   }
 
   // Test backend connection
@@ -598,7 +702,7 @@ export default function AdminDashboard() {
             </p>
             <Link
               href="/"
-              className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium rounded-lg transition-all duration-300"
+              className="inline-flex items-center justify-center px-6 py-3 bg-custom-btn-gradient hover:opacity-90 text-white font-medium rounded-lg transition-all duration-300"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Website
@@ -716,7 +820,7 @@ export default function AdminDashboard() {
           {/* Header */}
           <div className="text-center mb-8 sm:mb-12">
             <div className="flex items-center justify-center space-x-3 mb-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-custom-btn-gradient rounded-lg flex items-center justify-center">
                 <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div>
@@ -831,15 +935,14 @@ export default function AdminDashboard() {
                             <Button
                               onClick={fetchRequests}
                               disabled={loading}
-                              className="bg-red-600 hover:bg-red-700 text-white"
+                              className="bg-custom-btn-gradient hover:opacity-90 text-white border-0"
                             >
                               <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                               Retry
                             </Button>
                             <Button
                               onClick={testBackendConnection}
-                              variant="outline"
-                              className="border-blue-400 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200 font-medium"
+                              className="bg-custom-btn-gradient hover:opacity-90 text-white border-0 font-medium"
                             >
                               Test Connection
                             </Button>
@@ -849,8 +952,7 @@ export default function AdminDashboard() {
                                 console.log('🔍 Current user:', auth.currentUser?.email)
                                 console.log('🔍 Current filters:', filters)
                               }}
-                              variant="outline"
-                              className="border-red-400 text-red-300 hover:bg-red-500/20 hover:text-red-200 font-medium"
+                              className="bg-custom-btn-gradient hover:opacity-90 text-white border-0 font-medium"
                             >
                               Debug Info
                             </Button>
@@ -869,49 +971,103 @@ export default function AdminDashboard() {
                               </p>
                             </div>
                           )}
-                          {currentRequests.map((request) => (
-                          <Card
-                            key={request.id}
-                            className="bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/15 transition-all duration-300"
-                          >
-                            <CardContent className="p-4 sm:p-6">
-                              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-4 sm:space-y-0">
-                                <div className="flex items-start space-x-3 sm:space-x-4">
-                                  <div className="text-purple-400 mt-1">{getTypeIcon(request.type)}</div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-3">
-                                      <h3 className="text-base sm:text-lg font-semibold text-white truncate">{request.name}</h3>
-                                      <span
-                                        className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium w-fit ${getStatusColor(
-                                          request.status,
-                                        )}`}
-                                      >
-                                        {request.status}
-                                      </span>
+                          {currentRequests.map((request) => {
+                            const isExpanded = expandedItems.has(request.id)
+                            return (
+                              <Card
+                                key={request.id}
+                                className="bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/15 transition-all duration-300"
+                              >
+                                <CardContent className="p-4 sm:p-6">
+                                  {/* Collapsed View */}
+                                  {!isExpanded && (
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center space-x-3 sm:space-x-4">
+                                        <div className="text-purple-400">{getTypeIcon(request.type)}</div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3">
+                                            <h3 className="text-base sm:text-lg font-semibold text-white truncate">{request.name}</h3>
+                                            <span
+                                              className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium w-fit ${getStatusColor(
+                                                request.status,
+                                              )}`}
+                                            >
+                                              {request.status}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <Button
+                                          size="sm"
+                                          onClick={() => toggleExpanded(request.id)}
+                                          className="bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
+                                        >
+                                          <Eye className="w-4 h-4 mr-2" />
+                                          View
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          onClick={(e) => openResponseModal(request, e)}
+                                          className="bg-custom-btn-gradient hover:opacity-90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+                                        >
+                                          <Reply className="w-4 h-4 mr-2" />
+                                          <span className="hidden sm:inline">Respond</span>
+                                          <span className="sm:hidden">Reply</span>
+                                        </Button>
+                                      </div>
                                     </div>
-                                    <p className="text-white/80 text-sm mb-2 break-all">{request.email}</p>
-                                    <p className="text-white/60 text-sm mb-3">{request.company}</p>
-                                    <div className="text-white/90 text-sm sm:text-base">
-                                      {formatMessage(request.message)}
+                                  )}
+
+                                  {/* Expanded View */}
+                                  {isExpanded && (
+                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-4 sm:space-y-0">
+                                      <div className="flex items-start space-x-3 sm:space-x-4">
+                                        <div className="text-purple-400 mt-1">{getTypeIcon(request.type)}</div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-3">
+                                            <h3 className="text-base sm:text-lg font-semibold text-white truncate">{request.name}</h3>
+                                            <span
+                                              className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium w-fit ${getStatusColor(
+                                                request.status,
+                                              )}`}
+                                            >
+                                              {request.status}
+                                            </span>
+                                          </div>
+                                          <p className="text-white/80 text-sm mb-2 break-all">{request.email}</p>
+                                          <p className="text-white/60 text-sm mb-3">{request.company}</p>
+                                          <div className="text-white/90 text-sm sm:text-base">
+                                            {formatMessage(request.message)}
+                                          </div>
+                                          <p className="text-white/50 text-xs">{request.date}</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex justify-start sm:justify-end space-x-2">
+                                        <Button
+                                          size="sm"
+                                          onClick={() => toggleExpanded(request.id)}
+                                          className="bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
+                                        >
+                                          <X className="w-4 h-4 mr-2" />
+                                          Collapse
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          onClick={(e) => openResponseModal(request, e)}
+                                          className="bg-custom-btn-gradient hover:opacity-90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+                                        >
+                                          <Reply className="w-4 h-4 mr-2" />
+                                          <span className="hidden sm:inline">Respond</span>
+                                          <span className="sm:hidden">Reply</span>
+                                        </Button>
+                                      </div>
                                     </div>
-                                    <p className="text-white/50 text-xs">{request.date}</p>
-                                  </div>
-                                </div>
-                                <div className="flex justify-start sm:justify-end">
-                                  <Button
-                                    size="sm"
-                                    onClick={() => openResponseModal(request)}
-                                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 w-full sm:w-auto"
-                                  >
-                                    <Reply className="w-4 h-4 mr-2" />
-                                    <span className="hidden sm:inline">Respond</span>
-                                    <span className="sm:hidden">Reply</span>
-                                  </Button>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
+                                  )}
+                                </CardContent>
+                              </Card>
+                            )
+                          })}
                         
                         {/* Pagination Controls */}
                         {totalPages > 1 && (
@@ -919,9 +1075,8 @@ export default function AdminDashboard() {
                             <Button
                               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                               disabled={currentPage === 1}
-                              variant="outline"
                               size="sm"
-                              className="bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
+                              className="bg-custom-btn-gradient hover:opacity-90 text-white border-0 font-medium"
                             >
                               Previous
                             </Button>
@@ -945,9 +1100,8 @@ export default function AdminDashboard() {
                             <Button
                               onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                               disabled={currentPage === totalPages}
-                              variant="outline"
                               size="sm"
-                              className="bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
+                              className="bg-custom-btn-gradient hover:opacity-90 text-white border-0 font-medium"
                             >
                               Next
                             </Button>
@@ -963,15 +1117,18 @@ export default function AdminDashboard() {
 
                     {/* Response Modal */}
                     {selectedRequest && (
-                      <div className="fixed inset-0 z-[100] overflow-y-auto">
+                      <div className="fixed inset-0 z-[100] overflow-hidden">
                         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSelectedRequest(null)}></div>
                         <div 
                           id="response-modal"
-                          className="absolute bg-white/25 backdrop-blur-lg border border-white/30 rounded-2xl p-6 max-w-md w-full max-h-[calc(100vh-4rem)] overflow-y-auto shadow-2xl"
+                          className="absolute bg-white/25 backdrop-blur-lg border border-white/30 rounded-2xl p-6 max-w-md w-full max-h-[calc(100vh-4rem)] overflow-y-auto shadow-2xl transition-all duration-500 ease-out"
                           role="dialog"
                           aria-modal="true"
                           aria-labelledby="modal-title"
-                          style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+                          style={{
+                            ...modalPosition,
+                            transformOrigin: 'center'
+                          }}
                         >
                           <div className="flex items-center justify-between mb-4">
                             <h3 id="modal-title" className="text-xl font-bold text-white">Respond to {selectedRequest.name}</h3>
@@ -998,7 +1155,7 @@ export default function AdminDashboard() {
                               <Button
                                 onClick={() => handleResponse(selectedRequest.id)}
                                 disabled={!responseText.trim()}
-                                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+                                className="flex-1 bg-custom-btn-gradient hover:opacity-90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
                               >
                                 Send Response
                               </Button>
@@ -1027,7 +1184,7 @@ export default function AdminDashboard() {
                       <CardContent className="p-4 sm:p-6">
                         <div className="space-y-4">
                           <div className="text-center">
-                            <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <div className="w-16 h-16 bg-custom-btn-gradient rounded-full flex items-center justify-center mx-auto mb-4">
                               <Smartphone className="w-8 h-8 text-white" />
                             </div>
                             <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Upload Android APK</h3>
@@ -1068,7 +1225,7 @@ export default function AdminDashboard() {
                                   </div>
                                   <div className="w-full bg-white/20 rounded-full h-2">
                                     <div
-                                      className="bg-gradient-to-r from-purple-600 to-pink-600 h-2 rounded-full transition-all duration-300"
+                                      className="bg-custom-btn-gradient h-2 rounded-full transition-all duration-300"
                                         style={{ width: `${uploadProgress}%` }}
                                       ></div>
                                     </div>
@@ -1078,7 +1235,7 @@ export default function AdminDashboard() {
                                 <Button
                                   onClick={handleUpload}
                                   disabled={isUploading}
-                                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                                  className="w-full bg-custom-btn-gradient hover:opacity-90 text-white"
                                 >
                                   {isUploading ? (
                                     <div className="flex items-center space-x-2">

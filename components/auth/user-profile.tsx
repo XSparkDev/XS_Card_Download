@@ -12,7 +12,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, User, Mail, LogOut, Settings, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-export const UserProfile: React.FC = () => {
+interface UserProfileProps {
+  isOverLightSection?: boolean;
+  isScrolled?: boolean;
+}
+
+export const UserProfile: React.FC<UserProfileProps> = ({ isOverLightSection = false, isScrolled = false }) => {
   const { user, signOut, resetPassword } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -73,40 +78,49 @@ export const UserProfile: React.FC = () => {
     <div className="flex items-center gap-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={user.photoURL || undefined} alt={user.displayName || user.email || 'User'} />
-              <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
-            </Avatar>
+          <Button className={`relative h-10 px-3 backdrop-blur-sm border rounded-full transition-all duration-300 ${
+            isOverLightSection || !isScrolled
+              ? "bg-slate-900/90 border-slate-700/50 hover:bg-slate-800/90 hover:border-slate-600/50 text-white" 
+              : "bg-white/10 border-white/20 hover:bg-white/20 hover:border-white/30 text-white"
+          }`}>
+            <div className="flex items-center gap-2">
+              <Avatar className="h-6 w-6">
+                <AvatarImage src={user.photoURL || undefined} alt={user.displayName || user.email || 'User'} />
+                <AvatarFallback className="text-xs bg-white/20 text-white border-0">{getInitials(user.displayName)}</AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium hidden sm:inline">
+                {user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'User'}
+              </span>
+            </div>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuContent className={`w-56 backdrop-blur-lg shadow-2xl ${isOverLightSection || !isScrolled ? "bg-slate-900/90 border border-slate-700/50" : "bg-white/25 border border-white/30"}`} align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">
+              <p className={`text-sm font-medium leading-none ${isOverLightSection || !isScrolled ? "text-white" : "text-slate-900"}`}>
                 {user.displayName || 'User'}
               </p>
-              <p className="text-xs leading-none text-muted-foreground">
+              <p className={`text-xs leading-none ${isOverLightSection || !isScrolled ? "text-white/70" : "text-slate-600"}`}>
                 {user.email}
               </p>
             </div>
           </DropdownMenuLabel>
-          <DropdownMenuSeparator />
+          <DropdownMenuSeparator className={isOverLightSection || !isScrolled ? "bg-slate-700/50" : "bg-white/20"} />
           
           <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
             <DialogTrigger asChild>
-              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Reset Password</span>
-              </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className={`${isOverLightSection || !isScrolled ? "text-white hover:bg-slate-800/50 focus:bg-slate-800/50" : "text-slate-900 hover:bg-white/20 focus:bg-white/20"}`}>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Reset Password</span>
+          </DropdownMenuItem>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className={`backdrop-blur-lg ${isOverLightSection || !isScrolled ? "bg-slate-900/90 border border-slate-700/50" : "bg-white/25 border border-white/30"}`}>
               <DialogHeader>
-                <DialogTitle>Reset Password</DialogTitle>
+                <DialogTitle className={`${isOverLightSection || !isScrolled ? "text-white" : "text-slate-900"}`}>Reset Password</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleResetPassword} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="reset-email">Email</Label>
+                  <Label htmlFor="reset-email" className={`${isOverLightSection || !isScrolled ? "text-white" : "text-slate-900"}`}>Email</Label>
                   <Input
                     id="reset-email"
                     type="email"
@@ -114,6 +128,7 @@ export const UserProfile: React.FC = () => {
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
                     required
+                    className={`${isOverLightSection || !isScrolled ? "bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400" : "bg-white/50 border-white/20 text-slate-900 placeholder:text-slate-500"}`}
                   />
                 </div>
                 
@@ -123,7 +138,7 @@ export const UserProfile: React.FC = () => {
                   </Alert>
                 )}
                 
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full bg-custom-btn-gradient hover:opacity-90 text-white transition-opacity" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Send Reset Email
                 </Button>
@@ -131,7 +146,7 @@ export const UserProfile: React.FC = () => {
             </DialogContent>
           </Dialog>
 
-          <DropdownMenuItem onClick={handleSignOut} disabled={loading}>
+          <DropdownMenuItem onClick={handleSignOut} disabled={loading} className={`${isOverLightSection || !isScrolled ? "text-white hover:bg-slate-800/50 focus:bg-slate-800/50" : "text-slate-900 hover:bg-white/20 focus:bg-white/20"}`}>
             <LogOut className="mr-2 h-4 w-4" />
             <span>Sign out</span>
             {loading && <Loader2 className="ml-auto h-4 w-4 animate-spin" />}

@@ -96,14 +96,13 @@ export const PremiumAuthModal: React.FC<PremiumAuthModalProps> = ({
             <div className="flex space-x-4">
               <Button
                 onClick={() => setAuthStep('sign-in')}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                className="flex-1 bg-custom-btn-gradient hover:opacity-90 text-white transition-opacity"
               >
                 Yes, Sign In
               </Button>
               <Button
                 onClick={() => setAuthStep('register')}
-                variant="outline"
-                className="flex-1 border-blue-400/60 text-blue-300 hover:bg-blue-400/20"
+                className="flex-1 bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
               >
                 No, Register
               </Button>
@@ -115,8 +114,7 @@ export const PremiumAuthModal: React.FC<PremiumAuthModalProps> = ({
           <div className="space-y-4">
             <Button
               onClick={() => setAuthStep('user-check')}
-              variant="outline"
-              className="w-full mb-4 bg-transparent border-white/40 text-white hover:bg-white/10"
+              className="w-full mb-4 bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
             >
               ← Back
             </Button>
@@ -158,7 +156,7 @@ export const PremiumAuthModal: React.FC<PremiumAuthModalProps> = ({
               <Button
                 type="submit"
                 disabled={isSubmitting || !signInData.email || !signInData.password}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                className="w-full bg-custom-btn-gradient hover:opacity-90 text-white transition-opacity"
               >
                 {isSubmitting ? (
                   <div className="flex items-center space-x-2">
@@ -177,8 +175,7 @@ export const PremiumAuthModal: React.FC<PremiumAuthModalProps> = ({
           <div className="space-y-4">
             <Button
               onClick={() => setAuthStep('user-check')}
-              variant="outline"
-              className="w-full mb-4 bg-transparent border-white/40 text-white hover:bg-white/10"
+              className="w-full mb-4 bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
             >
               ← Back
             </Button>
@@ -294,7 +291,7 @@ export const PremiumAuthModal: React.FC<PremiumAuthModalProps> = ({
                   !registerData.password ||
                   !registerData.confirmPassword
                 }
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                className="w-full bg-custom-btn-gradient hover:opacity-90 text-white transition-opacity"
               >
                 {isSubmitting ? (
                   <div className="flex items-center space-x-2">
@@ -376,7 +373,7 @@ export const PremiumAuthModal: React.FC<PremiumAuthModalProps> = ({
             </div>
             <Button
               onClick={() => setShowAuthModal(false)}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8"
+              className="bg-custom-btn-gradient hover:opacity-90 text-white px-8 transition-opacity"
             >
               Close
             </Button>
@@ -387,8 +384,7 @@ export const PremiumAuthModal: React.FC<PremiumAuthModalProps> = ({
           <div className="space-y-4">
             <Button
               onClick={() => setAuthStep('user-check')}
-              variant="outline"
-              className="w-full mb-4 bg-transparent border-white/40 text-white hover:bg-white/10"
+              className="w-full mb-4 bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
             >
               ← Back
             </Button>
@@ -526,7 +522,7 @@ export const PremiumAuthModal: React.FC<PremiumAuthModalProps> = ({
                   !cardData.city ||
                   !cardData.postalCode
                 }
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-lg font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-custom-btn-gradient hover:opacity-90 text-white py-3 rounded-lg font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "Processing..." : "Submit Banking Information"}
               </Button>

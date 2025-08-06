@@ -94,14 +94,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
                 <div className="flex space-x-4">
                   <Button
                     onClick={() => setAuthStep('sign-in')}
-                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                    className="flex-1 bg-custom-btn-gradient hover:opacity-90 text-white transition-opacity"
                   >
                     Yes, Sign In
                   </Button>
                   <Button
                     onClick={() => setAuthStep('register')}
-                    variant="outline"
-                    className="flex-1 border-white/40 text-white hover:bg-white/10"
+                    className="flex-1 bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
                   >
                     No, Register
                   </Button>
@@ -113,8 +112,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
               <div className="space-y-4">
                 <Button
                   onClick={() => setAuthStep('user-check')}
-                  variant="outline"
-                  className="border-white/40 text-white hover:bg-white/10 w-full mb-4 bg-transparent"
+                  className="w-full mb-4 bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
                 >
                   ← Back
                 </Button>
@@ -170,7 +168,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
                   <Button
                     type="submit"
                     disabled={isSubmitting || !signInData.email || !signInData.password}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                    className="w-full bg-custom-btn-gradient hover:opacity-90 text-white transition-opacity"
                   >
                     {isSubmitting ? (
                       <div className="flex items-center space-x-2">
@@ -189,8 +187,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
               <div className="space-y-4">
                 <Button
                   onClick={() => setAuthStep('user-check')}
-                  variant="outline"
-                  className="border-white/40 text-white hover:bg-white/10 w-full mb-4 bg-transparent"
+                  className="w-full mb-4 bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
                 >
                   ← Back
                 </Button>
@@ -339,7 +336,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
                       !registerData.password ||
                       !registerData.confirmPassword
                     }
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                    className="w-full bg-custom-btn-gradient hover:opacity-90 text-white transition-opacity"
                   >
                     {isSubmitting ? (
                       <div className="flex items-center space-x-2">

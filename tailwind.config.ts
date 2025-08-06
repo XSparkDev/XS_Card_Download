@@ -90,6 +90,9 @@ const config: Config = {
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out'
+  		},
+  		backgroundImage: {
+  			'custom-btn-gradient': 'linear-gradient(90deg, #92278F 0%, #A62365 34.26%, #BE1E2D 100%)',
   		}
   	}
   },

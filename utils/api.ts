@@ -75,8 +75,8 @@ const getApiBaseUrl = (): string => {
         hostname.includes('.local') ||
         hostname.includes('dev.') ||
         hostname.includes('staging.')) {
-      console.log('🔍 DEBUG: API Config - Using Render production URL (localhost detected)');
-      // Temporarily pointing to production backend while in development
+      console.log('🔍 DEBUG: API Config - Using production backend (local development)');
+      // Use production backend for local development
       return 'https://xscard-app.onrender.com';
     }
   }
@@ -87,14 +87,14 @@ const getApiBaseUrl = (): string => {
       return 'https://xscard-app.onrender.com';
     }
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 DEBUG: API Config - Using Render production URL (development env)');
-      // Temporarily pointing to production backend while in development
+      console.log('🔍 DEBUG: API Config - Using production backend (development env)');
+      // Use production backend for development
       return 'https://xscard-app.onrender.com';
     }
   }
   
-  // Default to production for safety (temporary)
-  console.log('🔍 DEBUG: API Config - Using Render production URL (fallback)');
+  // Default to production backend
+  console.log('🔍 DEBUG: API Config - Using production backend (fallback)');
   return 'https://xscard-app.onrender.com';
 };
 
@@ -155,6 +155,8 @@ async function apiRequest<T>(
 ): Promise<ApiResponse<T>> {
   const url = buildApiUrl(endpoint);
   
+  console.log('🔍 Making API request to:', url);
+  
   const config: RequestInit = {
     headers: {
       ...DEFAULT_HEADERS,
@@ -166,12 +168,15 @@ async function apiRequest<T>(
   try {
     const response = await fetch(url, config);
     
+    console.log('🔍 API response status:', response.status);
+    
     // Handle non-2xx responses
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       
       try {
         const errorData = await response.json();
+        console.log('🔍 API error data:', errorData);
         errorMessage = errorData.message || errorData.error || errorMessage;
       } catch {
         // If error response is not JSON, use default message
@@ -182,8 +187,11 @@ async function apiRequest<T>(
 
     // Parse response
     const data = await response.json();
+    console.log('🔍 API success data:', data);
     return data;
   } catch (error) {
+    console.error('🔍 API request error:', error);
+    
     if (error instanceof ApiError) {
       throw error;
     }
@@ -208,14 +216,34 @@ export async function submitQuery(data: QueryRequest): Promise<ApiResponse> {
     captchaToken: data.captchaToken ? `${data.captchaToken.substring(0, 20)}...` : 'undefined'
   });
   
-  return apiRequest<ApiResponse>(API_ENDPOINTS.SUBMIT_QUERY, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  try {
+    const response = await apiRequest<ApiResponse>(API_ENDPOINTS.SUBMIT_QUERY, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    
+    return response;
+  } catch (error) {
+    // Handle captcha verification errors specifically
+    if (error instanceof ApiError && error.message.includes('Captcha verification failed')) {
+      console.error('❌ Backend captcha verification failed. This may be a backend configuration issue.');
+      return {
+        success: false,
+        message: "Captcha verification failed on the server. Please try again or contact support if the issue persists."
+      };
+    }
+    
+    // Re-throw other errors
+    throw error;
+  }
 }
 
 /**
  * Submit contact form data
+ * 
+ * NOTE: If you're experiencing "Captcha verification failed" errors, this is likely due to
+ * backend configuration issues with hCaptcha. The backend needs to be updated to properly
+ * verify hCaptcha tokens with the correct secret key.
  */
 export async function submitContactForm(formData: ContactFormData): Promise<ApiResponse> {
   const messageContent = `Contact Form Inquiry from ${formData.name}
@@ -242,6 +270,10 @@ ${formData.message}`;
 
 /**
  * Submit enterprise sales form data
+ * 
+ * NOTE: If you're experiencing "Captcha verification failed" errors, this is likely due to
+ * backend configuration issues with hCaptcha. The backend needs to be updated to properly
+ * verify hCaptcha tokens with the correct secret key.
  */
 export async function submitSalesForm(formData: SalesFormData): Promise<ApiResponse> {
   const messageContent = `Enterprise Sales Inquiry from ${formData.company}
@@ -336,6 +368,9 @@ export async function getAnalytics(token?: string): Promise<ApiResponse> {
 /**
  * Verify hCaptcha token on server side
  * This is CRITICAL for production security
+ * 
+ * NOTE: This function requires HCAPTCHA_SECRET_KEY environment variable to be set.
+ * For frontend-only applications, this verification should be done on the backend.
  */
 export async function verifyHCaptchaToken(token: string): Promise<boolean> {
   try {
@@ -356,6 +391,27 @@ export async function verifyHCaptchaToken(token: string): Promise<boolean> {
     console.error('hCaptcha verification failed:', error);
     return false;
   }
+}
+
+/**
+ * TEMPORARY: Submit query without captcha verification for testing
+ * This should only be used for development/testing when backend captcha verification is not working
+ */
+export async function submitQueryWithoutCaptcha(data: Omit<QueryRequest, 'captchaToken'>): Promise<ApiResponse> {
+  console.log('🔍 Submitting query without captcha verification (TEMPORARY):', {
+    ...data,
+    captchaToken: 'BYPASSED'
+  });
+  
+  const requestData: QueryRequest = {
+    ...data,
+    captchaToken: undefined // Remove captcha token
+  };
+  
+  return apiRequest<ApiResponse>(API_ENDPOINTS.SUBMIT_QUERY, {
+    method: 'POST',
+    body: JSON.stringify(requestData),
+  });
 }
 
 // Utility functions for common operations
