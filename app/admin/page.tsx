@@ -864,9 +864,9 @@ export default function AdminDashboard() {
               </div>
 
               {/* Content */}
-              <div className="p-4 sm:p-6 md:p-8">
+              <div className="p-4 sm:p-6 md:p-8 overflow-hidden">
                 {activeTab === "requests" && (
-                  <div className="space-y-6 sm:space-y-8">
+                  <div className="space-y-6 sm:space-y-8 w-full">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                       <h2 className="text-xl sm:text-2xl font-bold text-white">Customer Requests</h2>
                       <div className="text-white/60 text-sm">
@@ -925,129 +925,153 @@ export default function AdminDashboard() {
                       </Button>
                     </div>
 
-                    {/* Requests List */}
-                    <div className="grid gap-4 sm:gap-6">
-                      {loading && <p className="text-white/70 text-center py-8">Loading requests...</p>}
-                      {error && (
-                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-6 text-center">
-                          <p className="text-red-400 mb-4">{error}</p>
-                          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                            <Button
-                              onClick={fetchRequests}
-                              disabled={loading}
-                              className="bg-custom-btn-gradient hover:opacity-90 text-white border-0"
-                            >
-                              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                              Retry
-                            </Button>
-                            <Button
-                              onClick={testBackendConnection}
-                              className="bg-custom-btn-gradient hover:opacity-90 text-white border-0 font-medium"
-                            >
-                              Test Connection
-                            </Button>
-                            <Button
-                              onClick={() => {
-                                console.log('🔍 Current API_BASE_URL:', API_BASE_URL)
-                                console.log('🔍 Current user:', auth.currentUser?.email)
-                                console.log('🔍 Current filters:', filters)
-                              }}
-                              className="bg-custom-btn-gradient hover:opacity-90 text-white border-0 font-medium"
-                            >
-                              Debug Info
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                      {!loading && !error && requests.length === 0 && (
-                        <p className="text-white/70 text-center py-8">No requests found.</p>
-                      )}
-                      {!loading && !error && requests.length > 0 && (
-                        <>
-                          {error && error.includes('demo data') && (
-                            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-4 text-center">
-                              <p className="text-yellow-400 text-sm">
-                                🎭 Showing demo data - Backend server unavailable
-                              </p>
-                            </div>
-                          )}
-                          {currentRequests.map((request) => {
-                            const isExpanded = expandedItems.has(request.id)
-                            return (
-                              <Card
-                                key={request.id}
-                                className="bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/15 transition-all duration-300"
+                                        {/* Requests List */}
+                    <div className="w-full">
+                      <div className="space-y-4 sm:space-y-6">
+                        {loading && <p className="text-white/70 text-center py-8">Loading requests...</p>}
+                        {error && (
+                          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-6 text-center">
+                            <p className="text-red-400 mb-4">{error}</p>
+                            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                              <Button
+                                onClick={fetchRequests}
+                                disabled={loading}
+                                className="bg-custom-btn-gradient hover:opacity-90 text-white border-0"
                               >
-                                <CardContent className="p-4 sm:p-6">
+                                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                                Retry
+                              </Button>
+                              <Button
+                                onClick={testBackendConnection}
+                                className="bg-custom-btn-gradient hover:opacity-90 text-white border-0 font-medium"
+                              >
+                                Test Connection
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  console.log('🔍 Current API_BASE_URL:', API_BASE_URL)
+                                  console.log('🔍 Current user:', auth.currentUser?.email)
+                                  console.log('🔍 Current filters:', filters)
+                                }}
+                                className="bg-custom-btn-gradient hover:opacity-90 text-white border-0 font-medium"
+                              >
+                                Debug Info
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                        {!loading && !error && requests.length === 0 && (
+                          <p className="text-white/70 text-center py-8">No requests found.</p>
+                        )}
+                        {!loading && !error && requests.length > 0 && (
+                          <>
+                            {error && error.includes('demo data') && (
+                              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-4 text-center">
+                                <p className="text-yellow-400 text-sm">
+                                  🎭 Showing demo data - Backend server unavailable
+                                </p>
+                              </div>
+                            )}
+                            {currentRequests.map((request) => {
+                              const isExpanded = expandedItems.has(request.id)
+                              return (
+                                <Card
+                                  key={request.id}
+                                  className="bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/15 transition-all duration-300 w-full"
+                                >
+                                  <CardContent className="p-4 sm:p-6">
                                   {/* Collapsed View */}
                                   {!isExpanded && (
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center space-x-3 sm:space-x-4">
-                                        <div className="text-purple-400">{getTypeIcon(request.type)}</div>
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3">
-                                            <h3 className="text-base sm:text-lg font-semibold text-white truncate">{request.name}</h3>
-                                            <span
-                                              className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium w-fit ${getStatusColor(
-                                                request.status,
-                                              )}`}
-                                            >
-                                              {request.status}
-                                            </span>
+                                    <div className="space-y-3">
+                                      {/* Mobile: Stack vertically, Desktop: Side by side */}
+                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                                        <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
+                                          <div className="text-purple-400 flex-shrink-0">{getTypeIcon(request.type)}</div>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex flex-col space-y-2">
+                                              <h3 className="text-base sm:text-lg font-semibold text-white truncate">{request.name}</h3>
+                                              <span
+                                                className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium w-fit ${getStatusColor(
+                                                  request.status,
+                                                )}`}
+                                              >
+                                                {request.status}
+                                              </span>
+                                            </div>
                                           </div>
                                         </div>
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                        <Button
-                                          size="sm"
-                                          onClick={() => toggleExpanded(request.id)}
-                                          className="bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
-                                        >
-                                          <Eye className="w-4 h-4 mr-2" />
-                                          View
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          onClick={(e) => openResponseModal(request, e)}
-                                          className="bg-custom-btn-gradient hover:opacity-90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
-                                        >
-                                          <Reply className="w-4 h-4 mr-2" />
-                                          <span className="hidden sm:inline">Respond</span>
-                                          <span className="sm:hidden">Reply</span>
-                                        </Button>
+                                        
+                                        {/* Mobile: Full width buttons, Desktop: Right aligned */}
+                                        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto flex-shrink-0">
+                                          <Button
+                                            size="sm"
+                                            onClick={() => toggleExpanded(request.id)}
+                                            className="bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium w-full sm:w-auto"
+                                          >
+                                            <Eye className="w-4 h-4 mr-2" />
+                                            View Details
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            onClick={(e) => openResponseModal(request, e)}
+                                            className="bg-custom-btn-gradient hover:opacity-90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 w-full sm:w-auto"
+                                          >
+                                            <Reply className="w-4 h-4 mr-2" />
+                                            Respond
+                                          </Button>
+                                        </div>
                                       </div>
                                     </div>
                                   )}
 
                                   {/* Expanded View */}
                                   {isExpanded && (
-                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-4 sm:space-y-0">
-                                      <div className="flex items-start space-x-3 sm:space-x-4">
-                                        <div className="text-purple-400 mt-1">{getTypeIcon(request.type)}</div>
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-3">
-                                            <h3 className="text-base sm:text-lg font-semibold text-white truncate">{request.name}</h3>
-                                            <span
-                                              className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium w-fit ${getStatusColor(
-                                                request.status,
-                                              )}`}
-                                            >
-                                              {request.status}
-                                            </span>
+                                    <div className="space-y-4">
+                                      {/* Header Section */}
+                                <div className="flex items-start space-x-3 sm:space-x-4">
+                                  <div className="text-purple-400 mt-1">{getTypeIcon(request.type)}</div>
+                                  <div className="flex-1 min-w-0">
+                                          <div className="flex flex-col space-y-2 mb-4">
+                                            <h3 className="text-base sm:text-lg font-semibold text-white">{request.name}</h3>
+                                      <span
+                                        className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium w-fit ${getStatusColor(
+                                          request.status,
+                                        )}`}
+                                      >
+                                        {request.status}
+                                      </span>
+                                    </div>
+                                          
+                                          {/* Details Section */}
+                                          <div className="space-y-3">
+                                            <div>
+                                              <label className="text-white/60 text-xs uppercase tracking-wide font-medium">Email</label>
+                                              <p className="text-white/90 text-sm break-all">{request.email}</p>
+                                            </div>
+                                            <div>
+                                              <label className="text-white/60 text-xs uppercase tracking-wide font-medium">Company</label>
+                                              <p className="text-white/90 text-sm">{request.company}</p>
+                                            </div>
+                                            <div>
+                                              <label className="text-white/60 text-xs uppercase tracking-wide font-medium">Message</label>
+                                              <div className="text-white/90 text-sm leading-relaxed mt-1">
+                                      {formatMessage(request.message)}
+                                    </div>
+                                  </div>
+                                            <div>
+                                              <label className="text-white/60 text-xs uppercase tracking-wide font-medium">Date</label>
+                                              <p className="text-white/70 text-xs">{request.date}</p>
+                                </div>
                                           </div>
-                                          <p className="text-white/80 text-sm mb-2 break-all">{request.email}</p>
-                                          <p className="text-white/60 text-sm mb-3">{request.company}</p>
-                                          <div className="text-white/90 text-sm sm:text-base">
-                                            {formatMessage(request.message)}
-                                          </div>
-                                          <p className="text-white/50 text-xs">{request.date}</p>
                                         </div>
                                       </div>
-                                      <div className="flex justify-start sm:justify-end space-x-2">
-                                        <Button
-                                          size="sm"
+                                      
+                                      {/* Action Buttons - Mobile: Full width, Desktop: Right aligned */}
+                                      <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 pt-2 border-t border-white/10">
+                                  <Button
+                                    size="sm"
                                           onClick={() => toggleExpanded(request.id)}
-                                          className="bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
+                                          className="bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium w-full sm:w-auto order-2 sm:order-1"
                                         >
                                           <X className="w-4 h-4 mr-2" />
                                           Collapse
@@ -1055,56 +1079,59 @@ export default function AdminDashboard() {
                                         <Button
                                           size="sm"
                                           onClick={(e) => openResponseModal(request, e)}
-                                          className="bg-custom-btn-gradient hover:opacity-90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
-                                        >
-                                          <Reply className="w-4 h-4 mr-2" />
-                                          <span className="hidden sm:inline">Respond</span>
-                                          <span className="sm:hidden">Reply</span>
-                                        </Button>
-                                      </div>
-                                    </div>
+                                          className="bg-custom-btn-gradient hover:opacity-90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 w-full sm:w-auto order-1 sm:order-2"
+                                  >
+                                    <Reply className="w-4 h-4 mr-2" />
+                                          Respond
+                                  </Button>
+                                </div>
+                              </div>
                                   )}
-                                </CardContent>
-                              </Card>
+                            </CardContent>
+                          </Card>
                             )
                           })}
                         
                         {/* Pagination Controls */}
                         {totalPages > 1 && (
-                          <div className="flex items-center justify-center space-x-2 mt-6">
-                            <Button
-                              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                              disabled={currentPage === 1}
-                              size="sm"
-                              className="bg-custom-btn-gradient hover:opacity-90 text-white border-0 font-medium"
-                            >
-                              Previous
-                            </Button>
-                            
-                            <div className="flex items-center space-x-1">
-                              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                                <button
-                                  key={page}
-                                  onClick={() => setCurrentPage(page)}
-                                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                                    currentPage === page
-                                      ? 'bg-purple-600 text-white'
-                                      : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
-                                  }`}
-                                >
-                                  {page}
-                                </button>
-                              ))}
+                          <div className="mt-6">
+                            <div className="flex items-center justify-center space-x-2">
+                              <Button
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                                size="sm"
+                                className="bg-custom-btn-gradient hover:opacity-90 text-white border-0 font-medium"
+                              >
+                                <span className="hidden sm:inline">Previous</span>
+                                <span className="sm:hidden">←</span>
+                              </Button>
+                              
+                              <div className="flex items-center space-x-1">
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                  <button
+                                    key={page}
+                                    onClick={() => setCurrentPage(page)}
+                                    className={`px-2 sm:px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                                      currentPage === page
+                                        ? 'bg-purple-600 text-white'
+                                        : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+                                    }`}
+                                  >
+                                    {page}
+                                  </button>
+                                ))}
+                              </div>
+                              
+                              <Button
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                                size="sm"
+                                className="bg-custom-btn-gradient hover:opacity-90 text-white border-0 font-medium"
+                              >
+                                <span className="hidden sm:inline">Next</span>
+                                <span className="sm:hidden">→</span>
+                              </Button>
                             </div>
-                            
-                            <Button
-                              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                              disabled={currentPage === totalPages}
-                              size="sm"
-                              className="bg-custom-btn-gradient hover:opacity-90 text-white border-0 font-medium"
-                            >
-                              Next
-                            </Button>
                           </div>
                         )}
                         
@@ -1170,6 +1197,7 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                     )}
+                  </div>
                   </div>
                 )}
 
