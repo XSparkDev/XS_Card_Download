@@ -64,8 +64,8 @@ const getApiBaseUrl = (): string => {
     if (hostname.includes('ngrok-free.app') || hostname.includes('ngrok.io')) {
       console.log('🔍 DEBUG: API Config - Using Render production URL (ngrok detected)');
       // Temporarily pointing to production backend while in development
-      return 'https://xscard-app.onrender.com';
-     // return 'http://localhost:8383';
+     // return 'https://xscard-app.onrender.com';
+      return 'http://localhost:8383';
 
     }
     
@@ -77,7 +77,7 @@ const getApiBaseUrl = (): string => {
         hostname.includes('staging.')) {
       console.log('🔍 DEBUG: API Config - Using production backend (local development)');
       // Use production backend for local development
-      return 'https://xscard-app.onrender.com';
+      return 'http://localhost:8383';
     }
   }
   
@@ -87,15 +87,15 @@ const getApiBaseUrl = (): string => {
       return 'https://xscard-app.onrender.com';
     }
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 DEBUG: API Config - Using production backend (development env)');
-      // Use production backend for development
-      return 'https://xscard-app.onrender.com';
+      console.log('🔍 DEBUG: API Config - Using localhost backend (development env)');
+      // Use HTTP for local development
+      return 'http://localhost:8383';
     }
   }
   
-  // Default to production backend
-  console.log('🔍 DEBUG: API Config - Using production backend (fallback)');
-  return 'https://xscard-app.onrender.com';
+  // Default to localhost for local development
+  console.log('🔍 DEBUG: API Config - Using localhost backend (fallback)');
+  return 'http://localhost:8383';
 };
 
 // Base URL configuration

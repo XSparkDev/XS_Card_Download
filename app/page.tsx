@@ -1134,9 +1134,9 @@ export default function HomePage() {
               <a href="#" className="hover:text-white transition-colors">
                 Terms
               </a>
-              <a href="#" className="hover:text-white transition-colors">
+              <Link href="/support" className="hover:text-white transition-colors">
                 Support
-              </a>
+              </Link>
               <button
                 onClick={() => {
                   console.log('Admin Login clicked!');
@@ -1152,6 +1152,17 @@ export default function HomePage() {
           </div>
           <div className="mt-8 pt-8 border-t border-white/10 text-center text-white/60">
             <p>&copy; 2024 XS Card. All rights reserved.</p>
+            <p className="mt-2">
+              Developed by{" "}
+              <a 
+                href="https://xspark.co.za/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-purple-400 hover:text-purple-300 transition-colors underline"
+              >
+                X Spark Ltd. Pty
+              </a>
+            </p>
           </div>
         </div>
       </footer>

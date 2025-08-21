@@ -1300,6 +1300,17 @@ export default function AdminDashboard() {
               />
           </div>
                       <p className="text-white/60">&copy; 2024 XS Card Admin Dashboard. All rights reserved.</p>
+          <p className="text-white/60 mt-2">
+            Developed by{" "}
+            <a 
+              href="https://xspark.co.za/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-purple-400 hover:text-purple-300 transition-colors underline"
+            >
+              X Spark Ltd. Pty
+            </a>
+          </p>
         </div>
       </footer>
       
