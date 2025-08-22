@@ -52,8 +52,8 @@ export function HelpfulFeedback({
           variant={voteType === "helpful" ? "default" : "outline"}
           className={`${
             voteType === "helpful" 
-              ? "bg-green-500 hover:bg-green-600 text-white border-green-500" 
-              : "border-white/30 text-white hover:bg-white/10"
+              ? "bg-green-700 hover:bg-green-800 text-white border-green-700" 
+              : "border-white/30 text-white hover:bg-white/10 bg-white/5"
           } transition-colors`}
           onClick={() => handleVote("helpful")}
           disabled={hasVoted}
@@ -67,8 +67,8 @@ export function HelpfulFeedback({
           variant={voteType === "not-helpful" ? "default" : "outline"}
           className={`${
             voteType === "not-helpful" 
-              ? "bg-red-500 hover:bg-red-600 text-white border-red-500" 
-              : "border-white/30 text-white hover:bg-white/10"
+              ? "bg-red-700 hover:bg-red-800 text-white border-red-700" 
+              : "border-white/30 text-white hover:bg-white/10 bg-white/5"
           } transition-colors`}
           onClick={() => handleVote("not-helpful")}
           disabled={hasVoted}

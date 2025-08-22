@@ -25,8 +25,11 @@ import Link from "next/link"
 import { HelpfulFeedback } from "@/components/ui/helpful-feedback"
 import { submitContactForm, handleApiError, submitQueryWithoutCaptcha } from "@/utils/api"
 import { HCaptchaComponent } from "@/components/ui/hcaptcha"
+import { useToast } from "@/hooks/use-toast"
+import { Toaster } from "@/components/ui/toaster"
 
 export default function SupportPage() {
+  const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("faq")
   const [expandedFaqs, setExpandedFaqs] = useState<Set<number>>(new Set())
   
@@ -142,6 +145,52 @@ export default function SupportPage() {
     } else {
       setCaptchaToken(null)
       setSubmitStatus("idle")
+    }
+  }
+
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      // Try the modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text)
+        toast({
+          title: "Copied to clipboard!",
+          description: `${label} has been copied to your clipboard.`,
+          variant: "default",
+          className: "bg-green-600 border-green-500 text-white",
+        })
+      } else {
+        // Fallback for older browsers or non-secure contexts
+        const textArea = document.createElement("textarea")
+        textArea.value = text
+        textArea.style.position = "fixed"
+        textArea.style.left = "-999999px"
+        textArea.style.top = "-999999px"
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        
+        const successful = document.execCommand('copy')
+        document.body.removeChild(textArea)
+        
+        if (successful) {
+          toast({
+            title: "Copied to clipboard!",
+            description: `${label} has been copied to your clipboard.`,
+            variant: "default",
+            className: "bg-green-600 border-green-500 text-white",
+          })
+        } else {
+          throw new Error("Copy command failed")
+        }
+      }
+    } catch (error) {
+      console.error("Copy failed:", error)
+      toast({
+        title: "Failed to copy",
+        description: "Please copy the text manually.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -285,7 +334,21 @@ export default function SupportPage() {
         {/* Contact Methods */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           {contactMethods.map((method, index) => (
-            <Card key={index} className="bg-white/10 backdrop-blur-sm border-white/20">
+            <Card 
+              key={index} 
+              className={`bg-white/10 backdrop-blur-sm border-white/20 transition-all duration-200 ${
+                method.title === "Email Support" 
+                  ? "hover:bg-white/15 cursor-pointer" 
+                  : "hover:bg-white/15 cursor-pointer"
+              }`}
+              onClick={() => {
+                if (method.title === "Email Support") {
+                  window.location.href = `mailto:${method.details}`
+                } else if (method.title === "Phone Support") {
+                  copyToClipboard(method.details, "Phone number")
+                }
+              }}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center space-x-4">
                   <div className={`p-3 rounded-lg ${method.color}`}>
@@ -298,6 +361,11 @@ export default function SupportPage() {
                     <div className="flex items-center mt-2">
                       <Clock className="w-4 h-4 text-white/60 mr-1" />
                       <span className="text-white/60 text-sm">{method.response}</span>
+                    </div>
+                    <div className="mt-2">
+                      <span className="text-white/50 text-xs">
+                        {method.title === "Email Support" ? "Click to open email client" : "Click to copy phone number"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -433,20 +501,13 @@ export default function SupportPage() {
               <p className="text-white/80 mb-6 max-w-md mx-auto">
                 Our support team is here to help you get the most out of XS Card.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <div className="flex justify-center">
                 <Button 
                   className="bg-custom-btn-gradient hover:opacity-90 text-white"
                   onClick={openContactModal}
                 >
                   <Mail className="w-4 h-4 mr-2" />
                   Contact Us
-                </Button>
-                <Button 
-                  className="bg-custom-btn-gradient hover:opacity-90 text-white"
-                  onClick={() => window.location.href = 'tel:+27872655236'}
-                >
-                  <Phone className="w-4 h-4 mr-2" />
-                  Call Us
                 </Button>
               </div>
             </CardContent>
@@ -658,6 +719,9 @@ export default function SupportPage() {
           </div>
         </footer>
       </div>
+      
+      {/* Toast Notifications */}
+      <Toaster />
     </div>
   )
 }
