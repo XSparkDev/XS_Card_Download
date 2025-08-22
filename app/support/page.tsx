@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { 
-  ArrowLeft, 
   Mail, 
   Phone, 
   MessageCircle, 
@@ -32,6 +31,8 @@ export default function SupportPage() {
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("faq")
   const [expandedFaqs, setExpandedFaqs] = useState<Set<number>>(new Set())
+  const [isScrolled, setIsScrolled] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
   
   // Contact form state - use useEffect to prevent hydration issues
   const [showContactModal, setShowContactModal] = useState(false)
@@ -50,6 +51,16 @@ export default function SupportPage() {
   // Prevent hydration issues
   React.useEffect(() => {
     setIsClient(true)
+  }, [])
+
+  // Scroll effect for navigation
+  React.useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20)
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   const toggleFaq = (index: number) => {
@@ -194,6 +205,10 @@ export default function SupportPage() {
     }
   }
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const faqData = [
     {
       question: "How do I verify my XS Card account?",
@@ -293,36 +308,149 @@ export default function SupportPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
-      {/* Header */}
-      <div className="bg-black/20 backdrop-blur-sm border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <Link href="/">
-                <Button variant="ghost" className="text-white hover:text-white/80">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Home
-                </Button>
-              </Link>
-              <div className="flex items-center space-x-2">
-                <Image 
-                  src="/images/xscard-logo.png" 
-                  alt="XS Card Logo" 
-                  width={80} 
-                  height={24} 
-                  className="h-6 w-auto" 
-                />
-                <span className="text-white font-medium">Support</span>
+      {/* Navigation */}
+      <nav
+        className={`fixed top-4 z-50 transition-all duration-300 ${
+          isScrolled
+            ? "bg-white/20 backdrop-blur-lg border border-white/10"
+            : "bg-white shadow-lg border border-gray-100"
+        } ${
+          // Desktop and Tablet: fixed 800px width, centered
+          "md:left-1/2 md:-translate-x-1/2 md:w-[800px] md:px-6 md:py-4 md:rounded-full " +
+          // Mobile: full width minus margins
+          "left-4 right-4 px-4 sm:px-6 py-2 sm:py-4 rounded-full"
+        }`}
+      >
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={scrollToTop}
+              className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
+            >
+              <Image 
+                src="/images/xscard-logo.png" 
+                alt="XS Card Logo" 
+                width={200} 
+                height={67} 
+                className="h-8 sm:h-10 md:h-12 lg:h-14 w-auto" 
+                priority
+              />
+            </button>
+          </div>
+          
+          {/* Desktop and Tablet Navigation (md and up) */}
+          <div className="hidden md:flex items-center space-x-6 xl:space-x-8">
+            <Link href="/">
+              <button
+                className={`transition-colors font-medium cursor-pointer ${
+                  isScrolled
+                    ? "text-white/90 hover:text-white"
+                    : "text-gray-700 hover:text-purple-600"
+                }`}
+              >
+                Home
+              </button>
+            </Link>
+            <Link href="/privacy">
+              <button
+                className={`transition-colors font-medium cursor-pointer ${
+                  isScrolled
+                    ? "text-white/90 hover:text-white"
+                    : "text-gray-700 hover:text-purple-600"
+                }`}
+              >
+                Privacy
+              </button>
+            </Link>
+            <button
+              onClick={openContactModal}
+              className={`transition-colors font-medium cursor-pointer ${
+                isScrolled
+                  ? "text-white/90 hover:text-white"
+                  : "text-gray-700 hover:text-purple-600"
+              }`}
+            >
+              Contact
+            </button>
+            <Link href="/terms">
+              <button
+                className={`transition-colors font-medium cursor-pointer ${
+                  isScrolled
+                    ? "text-white/90 hover:text-white"
+                    : "text-gray-700 hover:text-purple-600"
+                }`}
+              >
+                Terms
+              </button>
+            </Link>
+          </div>
+          
+          {/* Mobile Menu Button */}
+          <div className="md:hidden">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`${
+                isScrolled
+                  ? "text-white/90 hover:text-white"
+                  : "text-gray-700 hover:text-purple-600"
+              }`}
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+            >
+              <div className="relative w-6 h-6">
+                <span className={`absolute top-1/2 left-0 w-6 h-0.5 bg-current transform transition-all duration-300 ${
+                  showMobileMenu ? 'rotate-45 translate-y-0' : '-translate-y-1'
+                }`}></span>
+                <span className={`absolute top-1/2 left-0 w-6 h-0.5 bg-current transform transition-all duration-300 ${
+                  showMobileMenu ? 'opacity-0' : 'opacity-100'
+                }`}></span>
+                <span className={`absolute top-1/2 left-0 w-6 h-0.5 bg-current transform transition-all duration-300 ${
+                  showMobileMenu ? '-rotate-45 translate-y-0' : 'translate-y-1'
+                }`}></span>
               </div>
+            </Button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile Menu */}
+      {showMobileMenu && (
+        <div className="fixed top-20 left-4 right-4 z-40 md:hidden">
+          <div className="bg-white/95 backdrop-blur-lg border border-white/20 rounded-2xl p-4 shadow-xl">
+            <div className="flex flex-col space-y-3">
+              <Link href="/">
+                <button className="text-left w-full px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
+                  Home
+                </button>
+              </Link>
+              <Link href="/privacy">
+                <button className="text-left w-full px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
+                  Privacy
+                </button>
+              </Link>
+              <button 
+                onClick={() => {
+                  openContactModal()
+                  setShowMobileMenu(false)
+                }}
+                className="text-left w-full px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+              >
+                Contact
+              </button>
+              <Link href="/terms">
+                <button className="text-left w-full px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
+                  Terms
+                </button>
+              </Link>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pt-24">
         {/* Hero Section */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-12 md:mt-8">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
             How can we help you?
           </h1>
@@ -687,12 +815,12 @@ export default function SupportPage() {
                 />
               </div>
               <div className="flex space-x-6 text-white/60">
-                <a href="#" className="hover:text-white transition-colors">
+                <Link href="/privacy" className="hover:text-white transition-colors">
                   Privacy
-                </a>
-                <a href="#" className="hover:text-white transition-colors">
+                </Link>
+                <Link href="/terms" className="hover:text-white transition-colors">
                   Terms
-                </a>
+                </Link>
                 <Link href="/support" className="hover:text-white transition-colors">
                   Support
                 </Link>

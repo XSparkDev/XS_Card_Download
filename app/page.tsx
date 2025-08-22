@@ -1128,12 +1128,12 @@ export default function HomePage() {
               />
             </div>
             <div className="flex space-x-6 text-white/60">
-              <a href="#" className="hover:text-white transition-colors">
+              <Link href="/privacy" className="hover:text-white transition-colors">
                 Privacy
-              </a>
-              <a href="#" className="hover:text-white transition-colors">
+              </Link>
+              <Link href="/terms" className="hover:text-white transition-colors">
                 Terms
-              </a>
+              </Link>
               <Link href="/support" className="hover:text-white transition-colors">
                 Support
               </Link>

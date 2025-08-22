@@ -57,15 +57,15 @@ const getApiBaseUrl = (): string => {
         hostname.includes('github.io') ||
         hostname.includes('firebaseapp.com')) {
       console.log('🔍 DEBUG: API Config - Using production URL');
-      return 'https://xscard-app.onrender.com';
+      return 'https://xscard-app-8ign.onrender.com';
     }
     
     // Ngrok detection - when using ngrok for development
     if (hostname.includes('ngrok-free.app') || hostname.includes('ngrok.io')) {
       console.log('🔍 DEBUG: API Config - Using Render production URL (ngrok detected)');
       // Temporarily pointing to production backend while in development
-     // return 'https://xscard-app.onrender.com';
-      return 'http://localhost:8383';
+     // return 'https://xscard-app-8ign.onrender.com';
+     // return 'http://localhost:8383';
 
     }
     
@@ -77,15 +77,17 @@ const getApiBaseUrl = (): string => {
         hostname.includes('staging.')) {
       console.log('🔍 DEBUG: API Config - Using production backend (local development)');
       // Use production backend for local development
-      return 'http://localhost:8383';
+     //return 'http://localhost:8383';
+     return 'https://xscard-app-8ign.onrender.com';
     }
   }
   
   // Fallback: Check for environment variables (for SSR/SSG)
   if (typeof process !== 'undefined' && process.env) {
     if (process.env.NODE_ENV === 'production') {
-      return 'https://xscard-app.onrender.com';
+      return 'https://xscard-app-8ign.onrender.com';
     }
+    
     if (process.env.NODE_ENV === 'development') {
       console.log('🔍 DEBUG: API Config - Using localhost backend (development env)');
       // Use HTTP for local development
