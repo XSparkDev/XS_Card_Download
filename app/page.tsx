@@ -20,6 +20,7 @@ import { AuthGuardModal } from "@/components/auth/auth-guard-modal"
 import { usePremiumAuthGuard } from "@/hooks/use-premium-auth-guard"
 import { PremiumAuthModal } from "@/components/auth/premium-auth-modal"
 import { HCaptchaComponent } from "@/components/ui/hcaptcha"
+import EnvironmentalImpactDemo from "@/components/EnvironmentalImpactDemo"
 
 // hCaptcha Component Wrapper
 const XSCardCaptcha = ({
@@ -644,6 +645,18 @@ export default function HomePage() {
               Pricing
             </button>
             <button
+              onClick={() => scrollToSection("environmental-impact")}
+              className={`transition-colors font-medium cursor-pointer ${
+                isOverLightSection
+                  ? "text-gray-700 hover:text-green-600"
+                  : isScrolled
+                    ? "text-white/90 hover:text-green-400"
+                    : "text-gray-700 hover:text-green-600"
+              }`}
+            >
+              Impact
+            </button>
+            <button
               onClick={openContactModal}
               className={`transition-colors font-medium cursor-pointer ${
                 isOverLightSection
@@ -733,6 +746,15 @@ export default function HomePage() {
                 className="block w-full text-left px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
               >
                 Pricing
+              </button>
+              <button
+                onClick={() => {
+                  scrollToSection("environmental-impact")
+                  setShowMobileMenu(false)
+                }}
+                className="block w-full text-left px-4 py-2 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
+              >
+                Impact
               </button>
               <button
                 onClick={() => {
@@ -1057,14 +1079,17 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Environmental Impact Demo Section */}
+      <EnvironmentalImpactDemo />
+
       {/* Contact Section - Extended for proper modal transparency */}
-      <section id="contact" className="px-6 py-32 relative min-h-screen flex items-center justify-center">
+      <section id="contact" className="px-6 py-20 relative min-h-screen flex items-center justify-center">
         <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-pink-600/20 blur-3xl"></div>
 
-        {/* Additional spacing to ensure clear separation from pricing section */}
+        {/* Additional spacing to ensure clear separation from environmental impact section */}
         <div className="w-full">
-          {/* Top spacing for clear transition from pricing */}
-          <div className="h-20"></div>
+          {/* Top spacing for clear transition from environmental impact section */}
+          <div className="h-8"></div>
 
           <div className="max-w-4xl mx-auto text-center relative z-10">
             <Card className="bg-white/5 backdrop-blur-lg border-white/10 p-12">
