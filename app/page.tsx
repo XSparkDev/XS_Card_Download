@@ -1206,7 +1206,7 @@ export default function HomePage() {
                 rel="noopener noreferrer"
                 className="text-purple-400 hover:text-purple-300 transition-colors underline"
               >
-                X Spark Ltd. Pty
+                X Spark Pty Ltd
               </a>
             </p>
           </div>
@@ -1261,10 +1261,10 @@ export default function HomePage() {
                       <PlatformIcon platform="android" className="w-4 h-4 text-white" />
                     </div>
                     <div className="text-left">
-                      <div className={`${getModalTextClass()} font-semibold text-sm drop-shadow-sm`}>
+                      <div className={`${isOverLightSection ? 'text-white' : 'text-gray-700'} font-semibold text-sm drop-shadow-sm`}>
                         Google Play
                       </div>
-                      <div className={`${getModalSecondaryTextClass()} text-xs font-medium drop-shadow-sm`}>
+                      <div className={`${isOverLightSection ? 'text-white/70' : 'text-gray-700'} text-xs font-medium drop-shadow-sm`}>
                         Android App
                       </div>
                     </div>
@@ -1281,8 +1281,8 @@ export default function HomePage() {
                       <PlatformIcon platform="ios" className="w-4 h-4 text-white" />
                     </div>
                     <div className="text-left">
-                      <div className="text-white/60 font-semibold text-sm drop-shadow-sm">App Store</div>
-                      <div className="text-white/40 text-xs font-medium drop-shadow-sm">Coming Soon</div>
+                      <div className={`${isOverLightSection ? 'text-white' : 'text-gray-700'} font-semibold text-sm drop-shadow-sm`}>App Store</div>
+                      <div className={`${isOverLightSection ? 'text-white/70' : 'text-gray-700'} text-xs font-medium drop-shadow-sm`}>Coming Soon</div>
                     </div>
                   </div>
                 </button>
@@ -1316,8 +1316,8 @@ export default function HomePage() {
                           <PlatformIcon platform="android" className="w-3 h-3 text-white" />
                         </div>
                         <div className="text-left">
-                          <div className="text-white font-semibold text-sm">Download APK</div>
-                          <div className="text-white/60 text-xs">Direct installation file</div>
+                          <div className={`${isOverLightSection ? 'text-white' : 'text-gray-700'} font-semibold text-sm`}>Download APK</div>
+                          <div className={`${isOverLightSection ? 'text-white/70' : 'text-gray-700'} text-xs`}>Direct installation file</div>
                         </div>
                       </div>
                     </button>

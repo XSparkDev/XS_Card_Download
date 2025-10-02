@@ -887,7 +887,7 @@ export default function TermsPage() {
                   rel="noopener noreferrer"
                   className="text-purple-400 hover:text-purple-300 transition-colors underline"
                 >
-                  X Spark Ltd. Pty
+                  X Spark Ltd 
                 </a>
               </p>
             </div>

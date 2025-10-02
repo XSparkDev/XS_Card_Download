@@ -48,36 +48,38 @@ export const HCaptchaComponent: React.FC<HCaptchaComponentProps> = ({
   };
 
   return (
-    <div className={`bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-4 space-y-4 ${
+    <div className={`bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4 w-full min-w-0 ${
       isOverLightSection ? 'bg-white/20' : 'bg-white/10'
     }`}>
-      <div className="flex items-center space-x-3">
-        <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center shadow-md">
-          <Shield className="w-4 h-4 text-white" />
+      <div className="flex items-center space-x-2 sm:space-x-3">
+        <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center shadow-md">
+          <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
         </div>
-        <div>
-          <h4 className="text-sm font-semibold text-white">Security Verification</h4>
-          <p className="text-xs text-white/70">Complete the challenge to continue</p>
+        <div className="min-w-0 flex-1">
+          <h4 className={`text-xs sm:text-sm font-semibold ${isOverLightSection ? 'text-white' : 'text-gray-700'}`}>Security Verification</h4>
+          <p className={`text-xs ${isOverLightSection ? 'text-white/70' : 'text-gray-700'}`}>Complete the challenge to continue</p>
         </div>
       </div>
 
-      <div className="flex justify-center">
-        <HCaptcha
-          ref={captchaRef}
-          sitekey={siteKey}
-          onVerify={handleVerify}
-          onError={handleError}
-          onExpire={handleExpire}
-          theme={isOverLightSection ? 'light' : 'dark'}
-          size="normal"
-        />
+      <div className="flex justify-center overflow-hidden captcha-container">
+        <div className="w-full max-w-xs sm:max-w-sm">
+          <HCaptcha
+            ref={captchaRef}
+            sitekey={siteKey}
+            onVerify={handleVerify}
+            onError={handleError}
+            onExpire={handleExpire}
+            theme={isOverLightSection ? 'light' : 'dark'}
+            size="normal"
+          />
+        </div>
       </div>
 
       <div className="flex items-center justify-center space-x-2 pt-2 border-t border-white/10">
-        <div className="w-4 h-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-sm flex items-center justify-center">
+        <div className="w-3 h-3 sm:w-4 sm:h-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-sm flex items-center justify-center">
           <span className="text-white text-xs font-bold">XS</span>
         </div>
-        <span className="text-xs text-white/60">Protected by hCaptcha</span>
+        <span className={`text-xs ${isOverLightSection ? 'text-white/60' : 'text-gray-700'}`}>Protected by hCaptcha</span>
       </div>
     </div>
   );

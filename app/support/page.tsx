@@ -840,7 +840,7 @@ export default function SupportPage() {
                   rel="noopener noreferrer"
                   className="text-purple-400 hover:text-purple-300 transition-colors underline"
                 >
-                  X Spark Ltd. Pty
+                  X Spark Pty Ltd
                 </a>
               </p>
             </div>

@@ -206,3 +206,24 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
+
+/* Mobile captcha responsiveness */
+@media (max-width: 640px) {
+  /* Ensure captcha fits properly on mobile */
+  .h-captcha {
+    transform: scale(0.9);
+    transform-origin: center;
+  }
+  
+  /* Adjust captcha container for mobile */
+  .captcha-container {
+    max-width: 100%;
+    overflow: hidden;
+  }
+  
+  /* Ensure captcha iframe fits within container */
+  .h-captcha iframe {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+}
