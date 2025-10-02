@@ -39,7 +39,7 @@ export default function EnvironmentalImpactDemo() {
         
         {/* Input Fields */}
         <div className="max-w-md mx-auto mb-8">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-white/80 mb-2">
                 Employees
@@ -83,48 +83,48 @@ export default function EnvironmentalImpactDemo() {
               </h3>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
               <div className="text-center">
-                <div className="text-4xl font-bold text-green-400 mb-2">
+                <div className="text-3xl sm:text-4xl font-bold text-green-400 mb-2">
                   {paperSaved}kg
                 </div>
-                <div className="text-base font-semibold text-white/90">Paper Saved</div>
+                <div className="text-sm sm:text-base font-semibold text-white/90">Paper Saved</div>
               </div>
               
               <div className="text-center">
-                <div className="text-4xl font-bold text-blue-400 mb-2">
+                <div className="text-3xl sm:text-4xl font-bold text-blue-400 mb-2">
                   {waterSaved.toLocaleString()}L
                 </div>
-                <div className="text-base font-semibold text-white/90">Water Saved</div>
+                <div className="text-sm sm:text-base font-semibold text-white/90">Water Saved</div>
               </div>
               
               <div className="text-center">
-                <div className="text-4xl font-bold text-orange-400 mb-2">
+                <div className="text-3xl sm:text-4xl font-bold text-orange-400 mb-2">
                   {co2Saved}kg
                 </div>
-                <div className="text-base font-semibold text-white/90">CO₂ Avoided</div>
+                <div className="text-sm sm:text-base font-semibold text-white/90">CO₂ Avoided</div>
               </div>
               
               <div className="text-center">
-                <div className="text-4xl font-bold text-emerald-400 mb-2">
+                <div className="text-3xl sm:text-4xl font-bold text-emerald-400 mb-2">
                   {treesSaved}
                 </div>
-                <div className="text-base font-semibold text-white/90">Trees Saved</div>
+                <div className="text-sm sm:text-base font-semibold text-white/90">Trees Saved</div>
               </div>
 
               <div className="text-center">
-                <div className="text-4xl font-bold text-yellow-400 mb-2">
+                <div className="text-3xl sm:text-4xl font-bold text-yellow-400 mb-2">
                   R{costSaved.toLocaleString()}
                 </div>
-                <div className="text-base font-semibold text-white/90">Cost Saved</div>
+                <div className="text-sm sm:text-base font-semibold text-white/90">Cost Saved</div>
               </div>
             </div>
 
              <div className="mt-8 text-center">
-               <p className="text-lg font-semibold text-white/80">
+               <p className="text-base sm:text-lg font-semibold text-white/80">
                  Total Cards Replaced: <span className="text-green-400">{totalCards.toLocaleString()}</span>
                </p>
-               <p className="text-xl font-bold text-white mt-2">
+               <p className="text-lg sm:text-xl font-bold text-white mt-2">
                  That's {totalCards.toLocaleString()} business cards you'd never need to print again!
                </p>
              </div>

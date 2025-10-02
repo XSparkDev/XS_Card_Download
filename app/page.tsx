@@ -21,6 +21,8 @@ import { usePremiumAuthGuard } from "@/hooks/use-premium-auth-guard"
 import { PremiumAuthModal } from "@/components/auth/premium-auth-modal"
 import { HCaptchaComponent } from "@/components/ui/hcaptcha"
 import EnvironmentalImpactDemo from "@/components/EnvironmentalImpactDemo"
+import { CurrencySelector } from "@/components/ui/currency-selector"
+import { type Currency, convertPrice, formatPrice } from "@/lib/currency"
 
 // hCaptcha Component Wrapper
 const XSCardCaptcha = ({
@@ -143,6 +145,9 @@ export default function HomePage() {
   const [enterpriseSubmitStatus, setEnterpriseSubmitStatus] = useState<"idle" | "success" | "error">("idle")
   const [isEnterpriseCaptchaVerified, setIsEnterpriseCaptchaVerified] = useState(false)
   const [enterpriseCaptchaToken, setEnterpriseCaptchaToken] = useState<string | null>(null)
+  
+  // Currency state
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency>("ZAR")
   
   const [formData, setFormData] = useState({
     name: "",
@@ -359,6 +364,10 @@ export default function HomePage() {
     }
   }
 
+  const handleGooglePlayDownload = () => {
+    window.open('https://play.google.com/store/apps/details?id=com.p.zzles.xscard', '_blank')
+  }
+
   const handleApkDownload = () => {
     if (!isDownloadCaptchaVerified || !downloadCaptchaToken) {
       return // Don't allow download without captcha verification and token
@@ -499,7 +508,7 @@ export default function HomePage() {
     if (device.isMobile) {
       if (device.isApple) {
         return {
-          text: "Coming Soon",
+          text: "Available soon on iOS",
           icon: (
             <PlatformIcon platform="ios" className="h-5 w-5 text-white/40" />
           ),
@@ -526,7 +535,7 @@ export default function HomePage() {
     } else if (device.isTablet) {
       if (device.isApple) {
         return {
-          text: "Coming Soon",
+          text: "Available soon on iOS",
           icon: (
             <PlatformIcon platform="ios" className="h-4 w-4 text-white/40" />
           ),
@@ -547,12 +556,12 @@ export default function HomePage() {
       // Desktop
       if (device.isApple) {
         return {
-          text: "Available on macOS!",
+          text: "Available soon on macOS",
           icon: (
-            <PlatformIcon platform="ios" className="h-4 w-4 text-white/60" />
+            <PlatformIcon platform="ios" className="h-4 w-4 text-white/40" />
           ),
-          className: "text-white/60",
-          isAvailable: true
+          className: "text-white/40",
+          isAvailable: false
         }
       } else if (device.isWindows) {
         return {
@@ -654,7 +663,7 @@ export default function HomePage() {
                     : "text-gray-700 hover:text-green-600"
               }`}
             >
-              Impact
+              Carbon Savings
             </button>
             <button
               onClick={openContactModal}
@@ -754,7 +763,7 @@ export default function HomePage() {
                 }}
                 className="block w-full text-left px-4 py-2 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
               >
-                Impact
+                Carbon Savings
               </button>
               <button
                 onClick={() => {
@@ -898,9 +907,15 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">Pricing Plans</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
               Choose the perfect plan for your business needs. All prices are exclusive of VAT.
             </p>
+            <div className="flex justify-center">
+              <CurrencySelector
+                selectedCurrency={selectedCurrency}
+                onCurrencyChange={setSelectedCurrency}
+              />
+            </div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -909,7 +924,9 @@ export default function HomePage() {
               <CardContent className="p-8">
                 <div className="text-center mb-6">
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">Free Plan</h3>
-                  <div className="text-4xl font-bold text-gray-900 mb-1">R0.00</div>
+                  <div className="text-4xl font-bold text-gray-900 mb-1">
+                    {formatPrice(convertPrice(0, "ZAR", selectedCurrency), selectedCurrency)}
+                  </div>
                   <div className="text-gray-600">/month</div>
                 </div>
                 <ul className="space-y-3 mb-8">
@@ -957,9 +974,13 @@ export default function HomePage() {
               <CardContent className="p-8">
                 <div className="text-center mb-6">
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">Premium Plan</h3>
-                  <div className="text-4xl font-bold text-gray-900 mb-1">R159.99</div>
+                  <div className="text-4xl font-bold text-gray-900 mb-1">
+                    {selectedCurrency === "USD" ? "$12.00" : "R159.99"}
+                  </div>
                   <div className="text-gray-600">/user/month</div>
-                  <div className="text-sm text-purple-600 mt-1">R1,800/year (Save R120 with annual billing)</div>
+                  <div className="text-sm text-purple-600 mt-1">
+                    {selectedCurrency === "USD" ? "$120.00" : "R1,800"}/year (Save {selectedCurrency === "USD" ? "$24.00" : "R120"} with annual billing)
+                  </div>
                 </div>
                 <ul className="space-y-3 mb-8">
                   <li className="flex items-start">
@@ -1063,13 +1084,13 @@ export default function HomePage() {
               <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
                 <div className="space-y-2">
                   <p>• All prices are exclusive of VAT</p>
-                  <p>• Secure payment through SA banks</p>
+                  <p>• Secure payment through {selectedCurrency === "ZAR" ? "SA banks" : "international payment gateways"}</p>
                   <p>• Monthly plans can be cancelled anytime</p>
                   <p>• Annual plans offer significant savings</p>
                 </div>
                 <div className="space-y-2">
                   <p>• All paid plans include 7-day free trial</p>
-                  <p>• Local billing in ZAR</p>
+                  <p>• Billing in {selectedCurrency}</p>
                   <p>• POPIA compliant</p>
                   <p>• Full mobile app access included</p>
                 </div>
@@ -1225,18 +1246,11 @@ export default function HomePage() {
             <div className="mb-6">
               <h4 className="text-lg font-semibold text-white mb-4">📱 Download Our App</h4>
               <div className="grid grid-cols-2 gap-4">
-                                <button
-                  onClick={handleApkDownload}
-                  disabled={!isDownloadCaptchaVerified || !downloadCaptchaToken}
-                  className={`transition-all duration-300 group shadow-lg rounded-lg p-4 border relative backdrop-blur-sm ${
-                    device.isAndroid
-                      ? isDownloadCaptchaVerified && downloadCaptchaToken
-                        ? 'bg-white/30 border-white/60 ring-2 ring-purple-400/50 hover:bg-white/40'
-                        : 'bg-white/20 border-white/40 opacity-60 cursor-not-allowed'
-                      : isDownloadCaptchaVerified && downloadCaptchaToken
-                        ? 'bg-white/20 hover:bg-white/30 border-white/40'
-                        : 'bg-white/10 border-white/30 opacity-60 cursor-not-allowed'
-                  } ${!isDownloadCaptchaVerified || !downloadCaptchaToken ? 'cursor-not-allowed' : ''}`}>
+                {/* Google Play Store - Primary Option */}
+                <button
+                  onClick={handleGooglePlayDownload}
+                  className="transition-all duration-300 group shadow-lg rounded-lg p-4 border relative backdrop-blur-sm bg-white/30 border-white/60 ring-2 ring-purple-400/50 hover:bg-white/40"
+                >
                   {device.isAndroid && (
                     <div className="absolute -top-2 -right-2 bg-custom-btn-gradient text-white text-xs px-2 py-1 rounded-full font-medium">
                       Recommended
@@ -1256,6 +1270,8 @@ export default function HomePage() {
                     </div>
                   </div>
                 </button>
+                
+                {/* App Store - Coming Soon */}
                 <button 
                   disabled
                   className="bg-white/10 border border-white/20 backdrop-blur-sm rounded-lg p-4 transition-all duration-300 group shadow-lg opacity-50 cursor-not-allowed"
@@ -1271,23 +1287,68 @@ export default function HomePage() {
                   </div>
                 </button>
               </div>
+              
+              {/* Alternative Download Option for Huawei Devices */}
+              <div className="mt-4">
+                <details className="group">
+                  <summary className="cursor-pointer text-sm text-white/60 hover:text-white/80 transition-colors flex items-center justify-center">
+                    <span>Alternative download for Huawei devices</span>
+                    <svg className="w-4 h-4 ml-1 transform group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </summary>
+                  <div className="mt-3 p-3 bg-white/5 border border-white/10 rounded-lg">
+                    <p className="text-xs text-white/70 mb-3">
+                      For devices that can't access Google Play Store (like Huawei), you can download the APK directly:
+                    </p>
+                    
+                    <button
+                      onClick={handleApkDownload}
+                      disabled={!isDownloadCaptchaVerified || !downloadCaptchaToken}
+                      className={`w-full transition-all duration-300 group shadow-lg rounded-lg p-3 border relative backdrop-blur-sm ${
+                        isDownloadCaptchaVerified && downloadCaptchaToken
+                          ? 'bg-white/20 border-white/40 hover:bg-white/30'
+                          : 'bg-white/10 border-white/30 opacity-60 cursor-not-allowed'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-6 h-6 bg-orange-500 rounded flex items-center justify-center shadow-md">
+                          <PlatformIcon platform="android" className="w-3 h-3 text-white" />
+                        </div>
+                        <div className="text-left">
+                          <div className="text-white font-semibold text-sm">Download APK</div>
+                          <div className="text-white/60 text-xs">Direct installation file</div>
+                        </div>
+                      </div>
+                    </button>
+                    
+                    {/* Security Verification for APK Download */}
+                    <div className="mt-4">
+                      <XSCardCaptcha
+                        onVerify={handleDownloadCaptchaVerify}
+                        isOverLightSection={isOverLightSection}
+                      />
+                    </div>
+                    
+                    {!isDownloadCaptchaVerified || !downloadCaptchaToken ? (
+                      <p className="text-xs text-white/60 mt-2 text-center">
+                        Please complete security verification to enable APK download.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-green-400 mt-2 text-center">
+                        ✓ Security verified - APK download enabled
+                      </p>
+                    )}
+                  </div>
+                </details>
+              </div>
             </div>
 
-            {/* Security Verification */}
-                      <div className="mb-6">
-            <XSCardCaptcha
-              onVerify={handleDownloadCaptchaVerify}
-              isOverLightSection={isOverLightSection}
-            />
-          </div>
 
             {/* Additional Info */}
             <div className="text-center">
               <p className="text-xs text-white/80 font-medium drop-shadow-sm">
-                {!isDownloadCaptchaVerified || !downloadCaptchaToken
-                  ? "Please complete security verification to enable download."
-                  : "Start creating your digital business card in minutes. No credit card required for free plan."
-                }
+                Start creating your digital business card in minutes. No credit card required for free plan.
               </p>
             </div>
           </div>
