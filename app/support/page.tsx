@@ -186,6 +186,7 @@ export default function SupportPage() {
         
         if (successful) {
           toast({
+            //view
             title: "Copied to clipboard!",
             description: `${label} has been copied to your clipboard.`,
             variant: "default",
