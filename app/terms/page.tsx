@@ -424,7 +424,7 @@ export default function TermsPage() {
                   <li>We may terminate a Membership immediately to correct a system issue, e.g., account duplication, or if you are found to be misusing the Platform.</li>
                 </ul>
                 <p className="text-white/80 mb-6">
-                  <strong>Nothing in these terms limit your rights under South African Consumer Protection Act.</strong>
+                  <strong>Nothing in these Terms limits your rights under the South African Consumer Protection Act.</strong>
                 </p>
 
                 <h3 className="text-xl font-bold text-white mb-4">2. Introduction</h3>
@@ -440,13 +440,16 @@ export default function TermsPage() {
                 <p className="text-white/80 mb-6">
                   <strong>2.4.</strong> If you are using the Platform on behalf of your employer or a business entity, you, in your individual capacity, represent and warrant that you are authorised to act on behalf of your employer or the business entity and to bind the entity and the entity's personnel to these Terms.
                 </p>
+                <p className="text-white/80 mb-6">
+                  <strong>2.5.</strong> You also represent that you are at least 18 years old and have the legal capacity to enter into this Agreement.
+                </p>
 
                 <h3 className="text-xl font-bold text-white mb-4">3. Acceptance and Platform License</h3>
                 <p className="text-white/80 mb-4">
                   <strong>3.1.</strong> You accept these Terms by registering on the Platform and/or using the Platform.
                 </p>
                 <p className="text-white/80 mb-4">
-                  <strong>3.2.</strong> You must be at least 18 years old to use the Platform.
+                  <strong>3.2.</strong> Subject to your compliance with these Terms, we grant you a non-exclusive, revocable, worldwide, non-transferable licence to use our Platform in accordance with these Terms.
                 </p>
                 <p className="text-white/80 mb-4">
                   <strong>3.3.</strong> We may amend these Terms at any time, by providing written notice to you. By continuing to use the Platform after the notice or 30 days after notification (whichever date is earlier), you agree to the amended Terms. If you do not agree to the amendment, you may terminate your Membership in accordance with the "Cancellation of Memberships" clause.
@@ -455,8 +458,9 @@ export default function TermsPage() {
                   <strong>3.4.</strong> If you access or download our mobile application from (1) the Apple App Store, you agree to any Usage Rules set forth in the App Store Terms of Service or (2) the Google Play Store, you agree to the Android, Google Inc. Terms and Conditions including the Google Apps Terms of Service.
                 </p>
                 <p className="text-white/80 mb-4">
-                  <strong>3.5.</strong> Subject to your compliance with these Terms, we grant you a personal, non-exclusive, royalty-free, revocable, worldwide, non-transferable license to use our Platform in accordance with these Terms. All other uses are prohibited without our prior written consent.
+                  If you access or download our mobile application from the Apple App Store, you acknowledge that your use of the App is also subject to the Apple Media Services Terms and the Apple Standard End User License Agreement (available at <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noopener noreferrer" className="underline">https://www.apple.com/legal/internet-services/itunes/dev/stdeula/</a>).
                 </p>
+                
                 <p className="text-white/80 mb-4">
                   <strong>3.6.</strong> When using the Platform, you must not do or attempt to do anything that is unlawful or inappropriate, including:
                 </p>
@@ -574,7 +578,7 @@ export default function TermsPage() {
                   <strong>8.2.</strong> If the CPA applies to you as a consumer, nothing in these Terms excludes your Consumer Law Rights under the CPA. You agree that our liability for the Platform provided to an entity defined as a consumer under the CPA is governed solely by the CPA and these Terms.
                 </p>
                 <p className="text-white/80 mb-4">
-                  <strong>8.3.</strong> Subject to your Consumer Law Rights, and to the extent permitted by law, we exclude all express and implied warranties, and all material, work, and services (including the Platform) are provided to you without warranties of any kind, either express or implied, whether in statute, at law, or on any other basis.
+                  <strong>8.3.</strong> Subject to your Consumer Law Rights, and to the extent permitted by law, we exclude all express and implied warranties, and all material, work, and services (including the Platform) are provided to you "as is" and without warranties of any kind, whether express or implied, whether in statute, at law or on any other basis.
                 </p>
                 <p className="text-white/80 mb-6">
                   <strong>8.4.</strong> This clause will survive the termination or expiry of your Membership.
@@ -594,15 +598,166 @@ export default function TermsPage() {
                   <strong>9.2.</strong> This clause will survive the termination or expiry of your Membership.
                 </p>
 
-                <h3 className="text-xl font-bold text-white mb-4">10. Termination</h3>
+                <h3 className="text-xl font-bold text-white mb-4">10. Subscription Terms and Billing</h3>
                 <p className="text-white/80 mb-4">
-                  <strong>10.1.</strong> You may cancel your Membership at any time by notifying us via email at support@xscard.co.za or via the Platform. Your cancellation will take effect at the end of your Membership term.
+                  <strong>10.1 Subscription Plans.</strong> XS Card offers auto-renewable subscription plans.
+                </p>
+                <p className="text-white/80 mb-2">
+                  <strong>Available Plans:</strong>
+                </p>
+                <ul className="text-white/80 mb-4 list-disc list-inside space-y-2 ml-6">
+                  <li>Premium (Monthly): 1 month – R159.99 per user/month (South Africa); $12.00 per user/month (outside South Africa)</li>
+                  <li>Premium (Annual): 12 months – R1,800.00 per user/year (South Africa); $120.00 per user/year (outside South Africa)</li>
+                </ul>
+                <p className="text-white/80 mb-2">
+                  Each subscription includes:
+                </p>
+                <ul className="text-white/80 mb-6 list-disc list-inside space-y-2 ml-6">
+                  <li>Unlimited digital business cards</li>
+                  <li>QR code generation and sharing</li>
+                  <li>Cloud storage and backup</li>
+                  <li>Contact management</li>
+                  <li>Advanced customisation with custom branding</li>
+                  <li>Premium QR code designs with brand colours</li>
+                  <li>Basic analytics (scans, contacts)</li>
+                  <li>Priority email support (within 12 hours)</li>
+                </ul>
+
+                <p className="text-white/80 mb-4">
+                  <strong>10.2 Free Trial.</strong> Trial duration: 7 days. What's included: Full access to Premium features. No charge during trial: You will not be charged until the trial period ends. Cancel anytime: Cancel before the trial ends to avoid being charged. Automatic conversion: If you don't cancel, you'll automatically be charged for the subscription when the trial ends.
+                </p>
+
+                <p className="text-white/80 mb-2">
+                  <strong>10.3 Automatic Renewal.</strong>
+                </p>
+                <ul className="text-white/80 mb-6 list-disc list-inside space-y-2 ml-6">
+                  <li>All subscriptions automatically renew unless you cancel at least 24 hours before the end of your current billing period.</li>
+                  <li>Your payment method will be charged within 24 hours before the start of each new subscription period.</li>
+                  <li>The subscription price may change. We will notify you at least 30 days before any price increase. Continuing to use the service after the price change means you accept the new price.</li>
+                </ul>
+
+                <p className="text-white/80 mb-2">
+                  <strong>10.4 Payment Processing.</strong>
+                </p>
+                <ul className="text-white/80 mb-2 list-disc list-inside space-y-2 ml-6">
+                  <li>iOS users: Apple App Store via Apple's In-App Purchase (IAP) system, governed by Apple's terms and conditions</li>
+                  <li>Android users: Google Play Store via Google's in-app billing system</li>
+                </ul>
+                <ul className="text-white/80 mb-6 list-disc list-inside space-y-2 ml-6">
+                  <li>All fees are charged in advance for each billing period</li>
+                  <li>Non-refundable except as required by law or stated in Section 10.7</li>
+                  <li>Inclusive of applicable VAT/taxes where required</li>
+                  <li>In your local currency as determined by Apple/Google</li>
+                </ul>
+
+                <p className="text-white/80 mb-2">
+                  <strong>10.5 How to Cancel Your Subscription.</strong>
+                </p>
+                <p className="text-white/80 mb-2">For iOS (iPhone/iPad) users:</p>
+                <ul className="text-white/80 mb-2 list-disc list-inside space-y-1 ml-6">
+                  <li>Open Settings on your device</li>
+                  <li>Tap your name at the top</li>
+                  <li>Tap "Subscriptions"</li>
+                  <li>Select "XS Card"</li>
+                  <li>Tap "Cancel Subscription"</li>
+                </ul>
+                <p className="text-white/80 mb-4">Subscriptions purchased via the Apple App Store can only be cancelled through your Apple ID account settings.</p>
+                <p className="text-white/80 mb-2">For Android users:</p>
+                <ul className="text-white/80 mb-2 list-disc list-inside space-y-1 ml-6">
+                  <li>Open Google Play Store</li>
+                  <li>Tap your profile icon (top right)</li>
+                  <li>Tap "Payments & subscriptions" → "Subscriptions"</li>
+                  <li>Select "XS Card"</li>
+                  <li>Tap "Cancel subscription"</li>
+                </ul>
+                <ul className="text-white/80 mb-6 list-disc list-inside space-y-2 ml-6">
+                  <li>Cancel at least 24 hours before your renewal date to avoid being charged</li>
+                  <li>After cancelling, you keep access until the end of your paid period</li>
+                  <li>No refund for the remaining time in your current billing period</li>
+                </ul>
+
+                <p className="text-white/80 mb-2">
+                  <strong>10.6 What Happens After Cancellation.</strong>
+                </p>
+                <ul className="text-white/80 mb-6 list-disc list-inside space-y-2 ml-6">
+                  <li>You retain full access until the end of your current billing period</li>
+                  <li>You will not be charged for future periods</li>
+                  <li>Your account converts to a free tier (if available) or becomes read-only</li>
+                  <li>Your data is retained according to our Privacy Policy</li>
+                  <li>You can resubscribe at any time</li>
+                </ul>
+
+                <p className="text-white/80 mb-2">
+                  <strong>10.7 Refund Policy.</strong>
+                </p>
+                <ul className="text-white/80 mb-4 list-disc list-inside space-y-2 ml-6">
+                  <li>All subscription sales are final except where required by South African Consumer Protection Act or other applicable law; you experience technical issues preventing Platform access for more than 48 consecutive hours; or you were charged due to our billing error.</li>
+                </ul>
+                <p className="text-white/80 mb-2">For iOS users (Apple controlled refunds):</p>
+                <ul className="text-white/80 mb-4 list-disc list-inside space-y-1 ml-6">
+                  <li>Go to <span className="underline">reportaproblem.apple.com</span></li>
+                  <li>Sign in with your Apple ID</li>
+                  <li>Find the XS Card subscription charge</li>
+                  <li>Click "Report a Problem" and follow the instructions</li>
+                </ul>
+                <p className="text-white/80 mb-4">We cannot process refunds for iOS purchases — Apple controls all refund decisions.</p>
+                <p className="text-white/80 mb-2">For Android users (Google controlled refunds):</p>
+                <ul className="text-white/80 mb-4 list-disc list-inside space-y-1 ml-6">
+                  <li>Go to <span className="underline">play.google.com/store/account</span></li>
+                  <li>Find the XS Card subscription</li>
+                  <li>Click "Request a refund" or "Report a problem"</li>
+                  <li>Follow Google's refund process</li>
+                </ul>
+                <p className="text-white/80 mb-2">For direct refund requests (where applicable):</p>
+                <ul className="text-white/80 mb-6 list-disc list-inside space-y-1 ml-6">
+                  <li>Email: support@xscard.co.za</li>
+                  <li>Include: account email, subscription details, reason for refund</li>
+                  <li>Response time: Within 7 business days</li>
+                  <li>Processing time: Approved refunds processed within 14 business days</li>
+                  <li>Refund method: Original payment method</li>
+                  <li>Refunds are granted at our sole discretion, except where required by law, and depend on time held, usage, reason, and refund history.</li>
+                </ul>
+
+                <p className="text-white/80 mb-2">
+                  <strong>10.8 Price Changes.</strong>
+                </p>
+                <ul className="text-white/80 mb-6 list-disc list-inside space-y-2 ml-6">
+                  <li>We may change subscription prices at any time.</li>
+                  <li>For existing subscribers: We'll notify you at least 30 days before any price increase; the new price applies from your next billing cycle after the notice period; you can cancel before the new price takes effect; continued use after the notice period means you accept the new price.</li>
+                  <li>New subscribers always pay the current price listed in the App Store or Google Play.</li>
+                </ul>
+
+                <p className="text-white/80 mb-2">
+                  <strong>10.9 Subscription Changes and Downgrades.</strong>
+                </p>
+                <ul className="text-white/80 mb-6 list-disc list-inside space-y-2 ml-6">
+                  <li>Upgrades take effect immediately; you'll be charged a pro-rated amount for the remainder of your billing period; your next renewal will be at the new subscription price.</li>
+                  <li>Downgrades take effect at the end of your current billing period; you continue with current features until then; no refund for the difference between plans.</li>
+                </ul>
+
+                <p className="text-white/80 mb-2">
+                  <strong>10.10 Failed Payments.</strong>
+                </p>
+                <ul className="text-white/80 mb-2 list-disc list-inside space-y-2 ml-6">
+                  <li>We'll attempt to collect payment for up to 7 days; Apple/Google will retry charging your payment method; you'll receive notifications; your account may be downgraded or suspended if payment cannot be processed.</li>
+                </ul>
+                <ul className="text-white/80 mb-6 list-disc list-inside space-y-2 ml-6">
+                  <li>To resolve failed payments: update your payment method in the App Store or Google Play, ensure sufficient funds, and contact Apple/Google support if the issue persists.</li>
+                </ul>
+
+                <p className="text-white/80 mb-6">
+                  <strong>10.11 Subscription Modifications by Us.</strong> We may modify subscription features with 30 days' notice, add new subscription tiers at any time, discontinue subscription tiers with 60 days' notice, and remove features from free tiers without notice. If we materially reduce features in your paid subscription tier, you may cancel and receive a pro-rated refund for unused time.
+                </p>
+
+                <h3 className="text-xl font-bold text-white mb-4">11. Termination</h3>
+                <p className="text-white/80 mb-4">
+                  <strong>11.1.</strong> You may cancel your Membership at any time by notifying us via email at support@xscard.co.za or via the Platform. Your cancellation will take effect at the end of your Membership term.
                 </p>
                 <p className="text-white/80 mb-4">
-                  <strong>10.2.</strong> Our auto-renewable in-app purchase subscriptions can only be cancelled using the App Store or Google Play cancellation services.
+                  <strong>11.2.</strong> Subscriptions purchased via the Apple App Store can only be cancelled through your Apple ID account settings. Subscriptions purchased via the Google Play Store can only be cancelled through your Google Play account settings.
                 </p>
                 <p className="text-white/80 mb-4">
-                  <strong>10.3.</strong> A Membership will terminate immediately upon written notice if:
+                  <strong>11.3.</strong> A Membership will terminate immediately upon written notice if:
                 </p>
                 <ul className="text-white/80 mb-6 list-disc list-inside space-y-2 ml-6">
                   <li>there is a breach of a material term of these Terms and that breach has not been remedied within 10 Business Days;</li>
@@ -611,50 +766,50 @@ export default function TermsPage() {
                   <li>you are found to be misusing the Platform.</li>
                 </ul>
 
-                <h3 className="text-xl font-bold text-white mb-4">11. Notice Regarding Apple</h3>
+                <h3 className="text-xl font-bold text-white mb-4">12. Notice Regarding Apple</h3>
                 <p className="text-white/80 mb-4">
-                  <strong>11.1.</strong> For iOS users, you acknowledge that these Terms are between you and us only, not with Apple Inc. (Apple), and Apple is not responsible for the Platform and any content available on the Platform.
+                  <strong>12.1.</strong> For iOS users, you acknowledge that these Terms are between you and us only, not with Apple Inc. (Apple), and Apple is not responsible for the Platform and any content available on the Platform.
                 </p>
                 <p className="text-white/80 mb-4">
-                  <strong>11.2.</strong> Apple has no obligation to furnish you with any maintenance and support services with respect to our Platform.
+                  <strong>12.2.</strong> Apple has no obligation to furnish you with any maintenance and support services with respect to our Platform if provided via the App Store.
                 </p>
                 <p className="text-white/80 mb-6">
-                  <strong>11.3.</strong> Apple will have no warranty obligation whatsoever with respect to the mobile application, except for refunding the purchase price in case of application failure.
+                  <strong>12.3.</strong> Apple will have no warranty obligation whatsoever with respect to the mobile application, except for refunding the purchase price in case of application failure.
                 </p>
 
-                <h3 className="text-xl font-bold text-white mb-4">12. Governing Law</h3>
+                <h3 className="text-xl font-bold text-white mb-4">13. Governing Law</h3>
                 <p className="text-white/80 mb-4">
-                  <strong>12.1.</strong> These Terms are governed by the laws of the Republic of South Africa.
+                  <strong>13.1.</strong> These Terms are governed by the laws of the Republic of South Africa.
                 </p>
                 <p className="text-white/80 mb-6">
-                  <strong>12.2.</strong> Each Party irrevocably submits to the exclusive jurisdiction of the courts of South Africa.
+                  <strong>13.2.</strong> Each Party irrevocably submits to the exclusive jurisdiction of the courts of South Africa.
                 </p>
 
-                <h3 className="text-xl font-bold text-white mb-4">13. Privacy</h3>
+                <h3 className="text-xl font-bold text-white mb-4">14. Privacy</h3>
                 <p className="text-white/80 mb-4">
-                  <strong>13.1.</strong> We are committed to protecting your privacy. Our collection and use of personal data are governed by the Protection of Personal Information Act, 2013 (POPIA).
+                  <strong>14.1.</strong> We are committed to protecting your privacy. Our collection and use of personal data are governed by the Protection of Personal Information Act, 2013 (POPIA).
                 </p>
                 <p className="text-white/80 mb-6">
-                  <strong>13.2.</strong> For more information on how we collect, use, and protect your personal information, please refer to our Privacy Policy available on our website.
+                  <strong>14.2.</strong> For more information on how we collect, use, and protect your personal information, please refer to our Privacy Policy available on our website.
                 </p>
 
-                <h3 className="text-xl font-bold text-white mb-4">14. Changes to Terms</h3>
+                <h3 className="text-xl font-bold text-white mb-4">15. Changes to Terms</h3>
                 <p className="text-white/80 mb-4">
-                  <strong>14.1.</strong> We may, at our discretion, amend these Terms from time to time.
+                  <strong>15.1.</strong> We may, at our discretion, amend these Terms from time to time.
                 </p>
                 <p className="text-white/80 mb-4">
-                  <strong>14.2.</strong> Any changes will be effective upon posting the updated Terms on our Platform.
+                  <strong>15.2.</strong> Any changes will be effective upon posting the updated Terms on our Platform.
                 </p>
                 <p className="text-white/80 mb-6">
-                  <strong>14.3.</strong> Your continued use of the Platform after such changes constitutes your acceptance of the new Terms.
+                  <strong>15.3.</strong> Your continued use of the Platform after such changes constitutes your acceptance of the new Terms.
                 </p>
 
-                <h3 className="text-xl font-bold text-white mb-4">15. Notices</h3>
+                <h3 className="text-xl font-bold text-white mb-4">16. Notices</h3>
                 <p className="text-white/80 mb-4">
-                  <strong>15.1.</strong> Any notice given under these Terms must be in writing and addressed to the relevant Party at their registered address or principal place of business.
+                  <strong>16.1.</strong> Any notice given under these Terms must be in writing and addressed to the relevant Party at their registered address or principal place of business.
                 </p>
                 <p className="text-white/80 mb-4">
-                  <strong>15.2.</strong> Notices may be sent by hand, registered post, or email, and will be deemed to have been received:
+                  <strong>16.2.</strong> Notices may be sent by hand, registered post, or email, and will be deemed to have been received:
                 </p>
                 <ul className="text-white/80 mb-4 list-disc list-inside space-y-2 ml-6">
                   <li>if delivered by hand, on the date of delivery;</li>
@@ -662,17 +817,17 @@ export default function TermsPage() {
                   <li>if sent by email, at the time of transmission, provided no delivery failure notification is received.</li>
                 </ul>
 
-                <h3 className="text-xl font-bold text-white mb-4">16. Severability</h3>
+                <h3 className="text-xl font-bold text-white mb-4">17. Severability</h3>
                 <p className="text-white/80 mb-4">
-                  <strong>16.1.</strong> If any provision of these Terms is found to be invalid, illegal, or unenforceable, that provision will be deemed modified to the extent necessary to make it enforceable.
+                  <strong>17.1.</strong> If any provision of these Terms is found to be invalid, illegal, or unenforceable, that provision will be deemed modified to the extent necessary to make it enforceable.
                 </p>
                 <p className="text-white/80 mb-6">
-                  <strong>16.2.</strong> If such modification is not possible, the provision will be severed from these Terms, and the remaining provisions will continue in full force and effect.
+                  <strong>17.2.</strong> If such modification is not possible, the provision will be severed from these Terms, and the remaining provisions will continue in full force and effect.
                 </p>
 
-                <h3 className="text-xl font-bold text-white mb-4">17. Entire Agreement</h3>
+                <h3 className="text-xl font-bold text-white mb-4">18. Entire Agreement</h3>
                 <p className="text-white/80 mb-6">
-                  <strong>17.1.</strong> These Terms constitute the entire agreement between the Parties regarding the subject matter and supersede all prior agreements, understandings, and communications, whether written or oral.
+                  <strong>18.1.</strong> These Terms constitute the entire agreement between the Parties regarding the subject matter and supersede all prior agreements, understandings, and communications, whether written or oral.
                 </p>
 
                 <h3 className="text-xl font-bold text-white mb-4">Contacting us</h3>
