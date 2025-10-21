@@ -183,13 +183,13 @@ export default function HomePage() {
       const pricingSection = document.getElementById("pricing")
       const contactSection = document.getElementById("contact")
 
-      if (pricingSection && contactSection) {
+      if (pricingSection) {
         const pricingTop = pricingSection.offsetTop - 100
         const pricingBottom = pricingTop + pricingSection.offsetHeight
-        const contactTop = contactSection.offsetTop - 100
 
-        // User is over light section only if in pricing area and not yet in contact area
-        setIsOverLightSection(scrollY >= pricingTop && scrollY < contactTop)
+        // Only treat the actual pricing block as a light section.
+        // Teams and Environmental Impact are dark and must not be considered light.
+        setIsOverLightSection(scrollY >= pricingTop && scrollY < pricingBottom)
       }
     }
 
@@ -648,11 +648,23 @@ export default function HomePage() {
                 isOverLightSection
                   ? "text-gray-700 hover:text-purple-600"
                   : isScrolled
-                    ? "text-white/90 hover:text-purple-600"
+                    ? "text-white/90 hover:text-white"
                     : "text-gray-700 hover:text-purple-600"
               }`}
             >
               Pricing
+            </button>
+            <button
+              onClick={() => scrollToSection("teams")}
+              className={`transition-colors font-medium cursor-pointer ${
+                isOverLightSection
+                  ? "text-gray-700 hover:text-purple-600"
+                  : isScrolled
+                    ? "text-white/90 hover:text-white"
+                    : "text-gray-700 hover:text-purple-600"
+              }`}
+            >
+              Teams
             </button>
             <button
               onClick={() => scrollToSection("environmental-impact")}
@@ -660,11 +672,11 @@ export default function HomePage() {
                 isOverLightSection
                   ? "text-gray-700 hover:text-green-600"
                   : isScrolled
-                    ? "text-white/90 hover:text-green-400"
+                    ? "text-white/90 hover:text-white"
                     : "text-gray-700 hover:text-green-600"
               }`}
             >
-              Carbon Savings
+              Impact
             </button>
             <button
               onClick={openContactModal}
@@ -759,12 +771,21 @@ export default function HomePage() {
               </button>
               <button
                 onClick={() => {
+                  scrollToSection("teams")
+                  setShowMobileMenu(false)
+                }}
+                className="block w-full text-left px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
+              >
+                Teams
+              </button>
+              <button
+                onClick={() => {
                   scrollToSection("environmental-impact")
                   setShowMobileMenu(false)
                 }}
                 className="block w-full text-left px-4 py-2 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
               >
-                Carbon Savings
+                Impact
               </button>
               <button
                 onClick={() => {
@@ -1097,6 +1118,171 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Teams and Departments Section */}
+      <section id="teams" className="px-6 py-20 relative">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 animate-fade-in-up animation-delay-200">
+              XS Card for Teams and Departments
+            </h2>
+            <p className="text-xl text-white/80 max-w-3xl mx-auto animate-fade-in-up animation-delay-400">
+              Connect. Track. Grow.
+            </p>
+            <p className="text-lg text-white/70 max-w-4xl mx-auto mt-6 animate-fade-in-up animation-delay-600">
+              XS Card is a digital business card and real-time CRM designed to help teams connect smarter, manage relationships efficiently, and measure engagement effortlessly.
+            </p>
+            <p className="text-base text-white/60 max-w-4xl mx-auto mt-4 animate-fade-in-up animation-delay-800">
+              From marketing and sales to communications, HR, and operations, XS Card brings visibility, consistency, and control to every professional interaction — all through a single, intuitive dashboard.
+            </p>
+          </div>
+
+          {/* How Teams Use XS Card */}
+          <div className="mb-16">
+            <h3 className="text-3xl font-bold text-white mb-8 text-center">How Teams Use XS Card</h3>
+            <div className="grid md:grid-cols-2 gap-8">
+              <Card className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group">
+                <CardContent className="p-8">
+                  <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
+                    <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-xl font-semibold text-white mb-3">Event & Campaign Tracking</h4>
+                  <p className="text-white/70 leading-relaxed">
+                    Capture every connection. Each shared XS Card automatically logs data such as number of shares, engagement levels, and locations — giving your team real-time insights into performance and campaign reach.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group">
+                <CardContent className="p-8">
+                  <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
+                    <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-xl font-semibold text-white mb-3">Lead and Contact Management</h4>
+                  <p className="text-white/70 leading-relaxed">
+                    Never lose a lead again. Track, manage, and follow up on every connection instantly. Identify your most engaged prospects and integrate seamlessly with existing CRM or communication tools.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group">
+                <CardContent className="p-8">
+                  <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
+                    <Shield className="h-8 w-8" />
+                  </div>
+                  <h4 className="text-xl font-semibold text-white mb-3">Centralised Brand and Profile Control</h4>
+                  <p className="text-white/70 leading-relaxed">
+                    Keep your organisation consistent and professional. Update contact details, logos and web links across all employee cards instantly from the dashboard.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group">
+                <CardContent className="p-8">
+                  <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
+                    <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-xl font-semibold text-white mb-3">Cross-Departmental Insights</h4>
+                  <p className="text-white/70 leading-relaxed">
+                    Get a big-picture view of engagement across your company. Compare performance between teams, divisions, or regions to make smarter marketing and operational decisions.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Designed for Every Department */}
+          <div className="mb-16">
+            <h3 className="text-3xl font-bold text-white mb-8 text-center">Designed for Every Department</h3>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group">
+                <CardContent className="p-6 text-center">
+                  <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
+                    <svg className="h-8 w-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-lg font-semibold text-white mb-2">Marketing</h4>
+                  <p className="text-white/70 text-sm leading-relaxed">
+                    Measure brand visibility and engagement across events, campaigns, and activations. XS Card turns every interaction into actionable marketing data.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group">
+                <CardContent className="p-6 text-center">
+                  <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
+                    <svg className="h-8 w-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  </div>
+                  <h4 className="text-lg font-semibold text-white mb-2">Sales</h4>
+                  <p className="text-white/70 text-sm leading-relaxed">
+                    Empower your sales team with instant lead capture, real-time insights, and automated CRM integration — helping them focus on closing deals, not collecting business cards.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group">
+                <CardContent className="p-6 text-center">
+                  <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
+                    <svg className="h-8 w-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-lg font-semibold text-white mb-2">Human Resources</h4>
+                  <p className="text-white/70 text-sm leading-relaxed">
+                    Equip new hires with digital business cards instantly and maintain consistent contact details, roles, and branding across your organisation.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group">
+                <CardContent className="p-6 text-center">
+                  <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
+                    <svg className="h-8 w-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-lg font-semibold text-white mb-2">Operations & Corporate Services</h4>
+                  <p className="text-white/70 text-sm leading-relaxed">
+                    Gain oversight of engagement activity across departments. XS Card simplifies data collection and reporting, helping you align teams around performance and communication goals.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Why XS Card Works */}
+          <div className="text-center">
+            <Card className="bg-white/5 backdrop-blur-lg border-white/10 p-8 max-w-4xl mx-auto">
+              <CardContent className="p-0">
+                <h3 className="text-2xl font-bold text-white mb-4">Why XS Card Works</h3>
+                <p className="text-lg text-white/80 leading-relaxed">
+                  XS Card bridges the gap between people and performance — giving organisations the power to track, analyse, and enhance every professional interaction, while maintaining a unified brand identity across teams and departments.
+                </p>
+                <div className="mt-8">
+                  <Button
+                    size="lg"
+                    className="bg-custom-btn-gradient hover:opacity-90 text-white px-4 sm:px-6 md:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-opacity w-full sm:w-auto"
+                    onClick={openEnterpriseModal}
+                  >
+                    Get Started for Your Team
+                    <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
