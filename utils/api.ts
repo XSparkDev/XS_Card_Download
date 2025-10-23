@@ -57,7 +57,7 @@ const getApiBaseUrl = (): string => {
         hostname.includes('github.io') ||
         hostname.includes('firebaseapp.com')) {
       console.log('🔍 DEBUG: API Config - Using production URL');
-      return 'https://xscard-app-8ign.onrender.com';
+      return 'https://baseUrl.xscard.co.za';
     }
     
     // Ngrok detection - when using ngrok for development
@@ -75,10 +75,9 @@ const getApiBaseUrl = (): string => {
         hostname.includes('.local') ||
         hostname.includes('dev.') ||
         hostname.includes('staging.')) {
-      console.log('🔍 DEBUG: API Config - Using production backend (local development)');
-      // Use production backend for local development
-     //return 'http://localhost:8383';
-     return 'https://xscard-app-8ign.onrender.com';
+      console.log('🔍 DEBUG: API Config - Using localhost backend (local development)');
+      // Use localhost backend for local development
+     return 'http://localhost:8383';
     }
   }
   
@@ -407,7 +406,7 @@ export async function submitQueryWithoutCaptcha(data: Omit<QueryRequest, 'captch
   
   const requestData: QueryRequest = {
     ...data,
-    captchaToken: undefined // Remove captcha token
+    captchaToken: 'BYPASSED_FOR_DEV' // Use a special bypass token for development
   };
   
   return apiRequest<ApiResponse>(API_ENDPOINTS.SUBMIT_QUERY, {
