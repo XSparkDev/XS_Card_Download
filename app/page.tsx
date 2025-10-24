@@ -738,7 +738,6 @@ export default function HomePage() {
             >
               Contact
             </button>
-            {isAuthenticated && <UserProfile isOverLightSection={isOverLightSection} isScrolled={isScrolled} />}
             <Button
               className="bg-custom-btn-gradient hover:opacity-90 text-white border-0 px-4 sm:px-6 xl:px-8 text-sm sm:text-base transition-opacity"
               onClick={openModal}
@@ -776,6 +775,13 @@ export default function HomePage() {
           </div>
         </div>
       </nav>
+
+      {/* Floating User Profile - Aligned with navbar */}
+      {isAuthenticated && (
+        <div className="fixed top-6 z-[60] right-8 md:left-[calc(50%+400px+16px)]">
+          <UserProfile isOverLightSection={isOverLightSection} isScrolled={isScrolled} />
+        </div>
+      )}
 
       {/* Mobile Menu */}
       <>
