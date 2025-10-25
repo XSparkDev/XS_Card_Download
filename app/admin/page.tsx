@@ -18,6 +18,10 @@ import {
   Shield,
   Menu,
   X,
+  History,
+  Trash2,
+  Edit3,
+  Star,
 } from "lucide-react"
 import Image from "next/image"
 import { useState, useEffect } from "react"
@@ -40,20 +44,58 @@ interface CustomerRequest {
   message: string;
   date: string;
   status: "pending" | "responded";
+  statusHistory?: Array<{
+    status: string;
+    timestamp: string | {
+      _seconds: number;
+      _nanoseconds: number;
+    };
+    updatedBy: string;
+    notes: string;
+    response: string;
+    admin?: {
+      id: string;
+      email: string;
+    };
+  }>;
 }
 
 export default function AdminDashboard() {
   const { toast } = useToast()
-  const [activeTab, setActiveTab] = useState<"requests" | "uploads">("requests")
+  const [activeTab, setActiveTab] = useState<"requests" | "uploads" | "video-upload">("requests")
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [requests, setRequests] = useState<CustomerRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedRequest, setSelectedRequest] = useState<CustomerRequest | null>(null)
   const [responseText, setResponseText] = useState("")
+  const [showMessageTrail, setShowMessageTrail] = useState<CustomerRequest | null>(null)
+  const [isResponding, setIsResponding] = useState(false)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
+  const [videoUploadFile, setVideoUploadFile] = useState<File | null>(null)
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0)
+  const [isVideoUploading, setIsVideoUploading] = useState(false)
+  const [uploadedVideos, setUploadedVideos] = useState<Array<{
+    id: string;
+    filename: string;
+    url: string;
+    size: number;
+    uploadDate: string;
+    uploadedBy: string;
+    description?: string;
+    isDemo?: boolean;
+  }>>([])
+  const [isLoadingVideos, setIsLoadingVideos] = useState(false)
+  const [showVideoPreview, setShowVideoPreview] = useState<string | null>(null)
+  const [editingVideoId, setEditingVideoId] = useState<string | null>(null)
+  const [editingVideoName, setEditingVideoName] = useState<string>("")
+  const [editingVideoDescription, setEditingVideoDescription] = useState<string>("")
+  const [isSavingVideo, setIsSavingVideo] = useState(false)
+  const [togglingDemoVideo, setTogglingDemoVideo] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
+  const [deletingVideo, setDeletingVideo] = useState<string | null>(null)
   const [filters, setFilters] = useState({
     type: "",
     status: ""
@@ -294,6 +336,18 @@ export default function AdminDashboard() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showMobileMenu])
 
+  // Handle escape key for delete confirmation
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showDeleteConfirm) {
+        setShowDeleteConfirm(null)
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [showDeleteConfirm])
+
   // Handle modal keyboard events
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -390,6 +444,359 @@ export default function AdminDashboard() {
     }
   }
 
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Check file type
+      const validTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo']
+      const validExtensions = ['.mp4', '.mov', '.avi']
+      const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
+      
+      if (validTypes.includes(file.type) || validExtensions.includes(fileExtension)) {
+        setVideoUploadFile(file)
+        setError(null)
+      } else {
+        setError('Please select a valid video file (MP4, MOV, or AVI)')
+        toast({
+          title: "Invalid File Type",
+          description: "Please select a valid video file (MP4, MOV, or AVI)",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
+  const uploadVideoFile = async () => {
+    if (!videoUploadFile) return
+    
+    // Don't upload if access is denied
+    if (accessDenied) {
+      return
+    }
+
+    // Check file size (150MB limit)
+    if (videoUploadFile.size > 150 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Video file must be smaller than 150MB",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsVideoUploading(true)
+    setVideoUploadProgress(0)
+    setError(null)
+
+    try {
+      const user = auth.currentUser
+      if (!user) {
+        throw new Error('User not authenticated')
+      }
+
+      const idToken = await user.getIdToken()
+      
+      const formData = new FormData()
+      formData.append('video', videoUploadFile)
+
+      const response = await fetch(`${API_BASE_URL}/api/feature-videos/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+          // Don't set Content-Type for FormData, let browser set it with boundary
+        },
+        body: formData,
+        mode: 'cors' // Explicitly set CORS mode
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        setVideoUploadFile(null)
+        setVideoUploadProgress(0)
+        
+        // Refresh video list
+        fetchVideos()
+        
+        // Show success toast
+        toast({
+          title: "Video Uploaded Successfully!",
+          description: "Your feature video has been uploaded successfully.",
+          variant: "default",
+        })
+      } else {
+        throw new Error(result.message || 'Failed to upload video')
+      }
+    } catch (error) {
+      console.error('Error uploading video:', error)
+      setError(error instanceof Error ? error.message : 'Failed to upload video')
+      
+      // Show error toast
+      toast({
+        title: "Upload Failed",
+        description: error instanceof Error ? error.message : 'Failed to upload video',
+        variant: "destructive",
+      })
+    } finally {
+      setIsVideoUploading(false)
+    }
+  }
+
+  // CRUD Operations for Videos
+  const fetchVideos = async () => {
+    setIsLoadingVideos(true)
+    try {
+      const user = auth.currentUser
+      if (!user) {
+        throw new Error('User not authenticated')
+      }
+
+      const idToken = await user.getIdToken()
+      
+      const response = await fetch(`${API_BASE_URL}/api/feature-videos`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        setUploadedVideos(result.videos || [])
+      } else {
+        throw new Error(result.message || 'Failed to fetch videos')
+      }
+    } catch (error) {
+      console.error('Error fetching videos:', error)
+      toast({
+        title: "Failed to Load Videos",
+        description: error instanceof Error ? error.message : 'Failed to load videos',
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingVideos(false)
+    }
+  }
+
+  const deleteVideo = async (videoId: string) => {
+    if (deletingVideo) return // Prevent multiple simultaneous deletions
+    
+    setDeletingVideo(videoId)
+    setShowDeleteConfirm(null)
+    
+    try {
+      const user = auth.currentUser
+      if (!user) {
+        throw new Error('User not authenticated')
+      }
+
+      const idToken = await user.getIdToken()
+      
+      const response = await fetch(`${API_BASE_URL}/api/feature-videos/${videoId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        setUploadedVideos(prev => prev.filter(video => video.id !== videoId))
+        toast({
+          title: "Video Deleted Successfully!",
+          description: "The video has been removed.",
+          variant: "default",
+        })
+      } else {
+        throw new Error(result.message || 'Failed to delete video')
+      }
+    } catch (error) {
+      console.error('Error deleting video:', error)
+      toast({
+        title: "Failed to Delete Video",
+        description: error instanceof Error ? error.message : 'Failed to delete video',
+        variant: "destructive",
+      })
+    } finally {
+      setDeletingVideo(null)
+    }
+  }
+
+  const updateVideoMetadata = async (videoId: string, updates: { filename?: string; description?: string }) => {
+    try {
+      const user = auth.currentUser
+      if (!user) {
+        throw new Error('User not authenticated')
+      }
+
+      const idToken = await user.getIdToken()
+      
+      const response = await fetch(`${API_BASE_URL}/api/feature-videos/${videoId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updates)
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        setUploadedVideos(prev => prev.map(video => 
+          video.id === videoId ? { ...video, ...updates } : video
+        ))
+        toast({
+          title: "Video Updated Successfully!",
+          description: "The video metadata has been updated.",
+          variant: "default",
+        })
+      } else {
+        throw new Error(result.message || 'Failed to update video')
+      }
+    } catch (error) {
+      console.error('Error updating video:', error)
+      toast({
+        title: "Failed to Update Video",
+        description: error instanceof Error ? error.message : 'Failed to update video',
+        variant: "destructive",
+      })
+    }
+  }
+
+  const startEditingVideo = (videoId: string, currentName: string, currentDescription: string = "") => {
+    setEditingVideoId(videoId)
+    setEditingVideoName(currentName)
+    setEditingVideoDescription(currentDescription)
+  }
+
+  const cancelEditingVideo = () => {
+    setEditingVideoId(null)
+    setEditingVideoName("")
+    setEditingVideoDescription("")
+  }
+
+  const toggleDemoVideo = async (videoId: string) => {
+    if (togglingDemoVideo) return // Prevent multiple simultaneous requests
+    
+    setTogglingDemoVideo(videoId)
+    try {
+      const user = auth.currentUser
+      if (!user) {
+        throw new Error('User not authenticated')
+      }
+
+      const idToken = await user.getIdToken()
+      
+      const response = await fetch(`${API_BASE_URL}/api/feature-videos/${videoId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ isDemo: true })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        // Update local state - set all videos to isDemo=false, then set the target to true
+        setUploadedVideos(prev => prev.map(video => ({
+          ...video,
+          isDemo: video.id === videoId
+        })))
+        
+        toast({
+          title: "Demo Video Updated!",
+          description: "The demo video has been changed successfully.",
+          variant: "default",
+        })
+      } else {
+        throw new Error(result.message || 'Failed to update demo video')
+      }
+    } catch (error) {
+      console.error('Error toggling demo video:', error)
+      toast({
+        title: "Failed to Update Demo Video",
+        description: error instanceof Error ? error.message : 'Failed to update demo video',
+        variant: "destructive",
+      })
+    } finally {
+      setTogglingDemoVideo(null)
+    }
+  }
+
+  const saveVideoName = async () => {
+    if (!editingVideoId || !editingVideoName.trim()) return
+
+    setIsSavingVideo(true)
+    try {
+      await updateVideoMetadata(editingVideoId, { 
+        filename: editingVideoName.trim(),
+        description: editingVideoDescription.trim()
+      })
+      cancelEditingVideo()
+    } finally {
+      setIsSavingVideo(false)
+    }
+  }
+
+  const formatVideoDate = (dateString: string) => {
+    try {
+      // Handle backend format: "October 23 2025 at 9:09:13 AM UTC"
+      // Remove "at" and convert to standard format
+      const cleanedDateString = dateString.replace(' at ', ' ')
+      const date = new Date(cleanedDateString)
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.log('Failed to parse date:', dateString)
+        return "Invalid Date"
+      }
+      
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    } catch (error) {
+      console.error('Error parsing date:', dateString, error)
+      return "Invalid Date"
+    }
+  }
+
+  // Load videos when video upload tab is active
+  useEffect(() => {
+    if (activeTab === "video-upload") {
+      fetchVideos()
+    }
+  }, [activeTab])
+
   const handleResponse = async (requestId: number) => {
     if (!responseText.trim()) return
     
@@ -398,16 +805,47 @@ export default function AdminDashboard() {
       return
     }
     
+    setIsResponding(true)
+    
+    // Create the new response entry
+    const newResponse = {
+      status: "responded" as const,
+      response: responseText.trim(),
+      notes: "Response sent via admin dashboard",
+      timestamp: new Date().toISOString(),
+      updatedBy: auth.currentUser?.uid || "",
+      admin: {
+        id: auth.currentUser?.uid || "",
+        email: auth.currentUser?.email || ""
+      }
+    }
+
+    // Optimistically update the UI
+    setRequests((prev) => prev.map((req) => 
+      req.id === requestId ? { 
+        ...req, 
+        status: "responded" as const,
+        statusHistory: [...(req.statusHistory || []), newResponse]
+      } : req
+    ))
+
+    // Update message trail if it's open
+    if (showMessageTrail && showMessageTrail.id === requestId) {
+      setShowMessageTrail((prev) => prev ? {
+        ...prev,
+        status: "responded" as const,
+        statusHistory: [...(prev.statusHistory || []), newResponse]
+      } : null)
+    }
+
+    // Clear the response text immediately
+    const currentResponseText = responseText
+    setResponseText("")
+    
     try {
       const user = auth.currentUser
       if (!user) {
-        setError('User not authenticated')
-        toast({
-          title: "Authentication Error",
-          description: "Please log in again to send responses.",
-          variant: "destructive",
-        })
-        return
+        throw new Error('User not authenticated')
       }
 
       const idToken = await user.getIdToken()
@@ -421,7 +859,7 @@ export default function AdminDashboard() {
         },
         body: JSON.stringify({
           status: "responded",
-          response: responseText.trim(),
+          response: currentResponseText.trim(),
           notes: "Response sent via admin dashboard"
         })
       })
@@ -433,33 +871,87 @@ export default function AdminDashboard() {
 
       const result = await response.json()
       
-      if (result.success) {
-        // Update local state to reflect the change
-        setRequests((prev) => prev.map((req) => 
-          req.id === requestId ? { ...req, status: "responded" as const } : req
-        ))
-        
-        setSelectedRequest(null)
-        setResponseText("")
-        
-        // Show success toast
-        toast({
-          title: "Response Sent Successfully!",
-          description: "Your response has been sent to the customer.",
-          variant: "default",
-        })
-      } else {
+      if (!result.success) {
         throw new Error(result.message || 'Failed to send response')
       }
+
+      // Close modals
+      setSelectedRequest(null)
+      
+      // Show success toast
+      toast({
+        title: "Response Sent Successfully!",
+        description: "Your response has been sent to the customer.",
+        variant: "default",
+      })
+      
     } catch (error) {
       console.error('Error responding to request:', error)
-      setError(error instanceof Error ? error.message : 'Failed to send response')
+      
+      // Revert the optimistic update
+      setRequests((prev) => prev.map((req) => 
+        req.id === requestId ? { 
+          ...req, 
+          status: req.statusHistory && req.statusHistory.length > 0 ? "responded" as const : "pending" as const,
+          statusHistory: req.statusHistory?.slice(0, -1) || []
+        } : req
+      ))
+
+      // Revert message trail if it's open
+      if (showMessageTrail && showMessageTrail.id === requestId) {
+        setShowMessageTrail((prev) => prev ? {
+          ...prev,
+          status: prev.statusHistory && prev.statusHistory.length > 1 ? "responded" as const : "pending" as const,
+          statusHistory: prev.statusHistory?.slice(0, -1) || []
+        } : null)
+      }
+
+      // Restore the response text
+      setResponseText(currentResponseText)
       
       // Show error toast
       toast({
         title: "Failed to Send Response",
         description: error instanceof Error ? error.message : 'An unexpected error occurred.',
         variant: "destructive",
+      })
+    } finally {
+      setIsResponding(false)
+    }
+  }
+
+  const openMessageTrail = (request: CustomerRequest) => {
+    setShowMessageTrail(request)
+  }
+
+  const formatTimestamp = (timestamp: string | { _seconds: number; _nanoseconds: number }) => {
+    if (typeof timestamp === 'string') {
+      // Parse the string timestamp and format it
+      const date = new Date(timestamp)
+      return {
+        date: date.toLocaleDateString('en-US', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        }),
+        time: date.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        })
+      }
+    }
+    const date = new Date(timestamp._seconds * 1000)
+    return {
+      date: date.toLocaleDateString('en-US', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      }),
+      time: date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
       })
     }
   }
@@ -861,6 +1353,19 @@ export default function AdminDashboard() {
                     <span className="text-sm sm:text-base md:text-lg">App Deployment</span>
                   </div>
                 </button>
+                <button
+                  onClick={() => setActiveTab("video-upload")}
+                  className={`px-3 sm:px-6 md:px-8 py-3 sm:py-6 font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
+                    activeTab === "video-upload"
+                      ? "text-white border-b-2 border-purple-400 bg-white/10"
+                      : "text-white/70 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <div className="flex items-center space-x-2 sm:space-x-3">
+                    <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="text-sm sm:text-base md:text-lg">Video Upload</span>
+                  </div>
+                </button>
               </div>
 
               {/* Content */}
@@ -1013,6 +1518,19 @@ export default function AdminDashboard() {
                                           </Button>
                                           <Button
                                             size="sm"
+                                            onClick={() => openMessageTrail(request)}
+                                            disabled={!request.statusHistory || request.statusHistory.length === 0}
+                                            className={`font-medium shadow-lg transition-all duration-300 w-full sm:w-auto ${
+                                              request.statusHistory && request.statusHistory.length > 0
+                                                ? 'bg-purple-600 hover:bg-purple-700 text-white hover:shadow-xl'
+                                                : 'bg-gray-500 text-white/50 cursor-not-allowed'
+                                            }`}
+                                          >
+                                            <History className="w-4 h-4 mr-2" />
+                                            Message Trail
+                                          </Button>
+                                          <Button
+                                            size="sm"
                                             onClick={(e) => openResponseModal(request, e)}
                                             className="bg-custom-btn-gradient hover:opacity-90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 w-full sm:w-auto"
                                           >
@@ -1071,15 +1589,28 @@ export default function AdminDashboard() {
                                   <Button
                                     size="sm"
                                           onClick={() => toggleExpanded(request.id)}
-                                          className="bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium w-full sm:w-auto order-2 sm:order-1"
+                                          className="bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium w-full sm:w-auto order-3 sm:order-1"
                                         >
                                           <X className="w-4 h-4 mr-2" />
                                           Collapse
                                         </Button>
                                         <Button
                                           size="sm"
+                                          onClick={() => openMessageTrail(request)}
+                                          disabled={!request.statusHistory || request.statusHistory.length === 0}
+                                          className={`font-medium shadow-lg transition-all duration-300 w-full sm:w-auto order-2 sm:order-2 ${
+                                            request.statusHistory && request.statusHistory.length > 0
+                                              ? 'bg-purple-600 hover:bg-purple-700 text-white hover:shadow-xl'
+                                              : 'bg-gray-500 text-white/50 cursor-not-allowed'
+                                          }`}
+                                        >
+                                          <History className="w-4 h-4 mr-2" />
+                                          Message Trail
+                                        </Button>
+                                        <Button
+                                          size="sm"
                                           onClick={(e) => openResponseModal(request, e)}
-                                          className="bg-custom-btn-gradient hover:opacity-90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 w-full sm:w-auto order-1 sm:order-2"
+                                          className="bg-custom-btn-gradient hover:opacity-90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300 w-full sm:w-auto order-1 sm:order-3"
                                   >
                                     <Reply className="w-4 h-4 mr-2" />
                                           Respond
@@ -1197,6 +1728,129 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                     )}
+
+                    {/* Message Trail Modal */}
+                    {showMessageTrail && (
+                      <div className="fixed inset-0 z-[100] overflow-hidden">
+                        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowMessageTrail(null)}></div>
+                        <div 
+                          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/25 backdrop-blur-lg border border-white/30 rounded-2xl p-6 max-w-2xl w-full h-[600px] shadow-2xl flex flex-col"
+                          role="dialog"
+                          aria-modal="true"
+                          aria-labelledby="message-trail-title"
+                        >
+                          {/* Header */}
+                          <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                            <div>
+                              <h3 id="message-trail-title" className="text-xl font-bold text-white">Message Trail</h3>
+                              <p className="text-white/70 text-sm mt-1">{showMessageTrail.name} - {showMessageTrail.email}</p>
+                            </div>
+                            <button
+                              onClick={() => setShowMessageTrail(null)}
+                              className="text-white/70 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
+                              aria-label="Close modal"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+                          
+                          {/* Scrollable Content */}
+                          <div className="flex-1 overflow-y-auto space-y-4 pr-2 min-h-0">
+                            {/* Responses */}
+                            {showMessageTrail.statusHistory && showMessageTrail.statusHistory.length > 0 ? (
+                              showMessageTrail.statusHistory.map((entry, index) => (
+                                <div key={index} className="bg-white/10 rounded-lg p-4 border border-white/20">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center space-x-2">
+                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(entry.status)}`}>
+                                        {entry.status}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Date, Time and Admin */}
+                                  <div className="flex items-center justify-between mb-3">
+                                    {(() => {
+                                      const timestamp = formatTimestamp(entry.timestamp)
+                                      return (
+                                        <div className="text-white/60 text-xs space-y-1">
+                                          <div>Time: {timestamp.time}</div>
+                                          <div>Date: {timestamp.date}</div>
+                                        </div>
+                                      )
+                                    })()}
+                                    {entry.admin && (
+                                      <div className="text-right text-white/60 text-xs">
+                                        <div>by: <span className="text-purple-300 font-medium">
+                                          <a 
+                                            href={`mailto:${entry.admin.email}`}
+                                            className="hover:text-purple-200 hover:underline transition-colors"
+                                            title={`Send email to ${entry.admin.email}`}
+                                          >
+                                            {entry.admin.email}
+                                          </a>
+                                        </span></div>
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  {entry.response && (
+                                    <div className="text-white/90 text-sm bg-white/5 rounded p-3 border-l-2 border-purple-400">
+                                      {entry.response}
+                                    </div>
+                                  )}
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-center py-8">
+                                <History className="w-12 h-12 text-white/40 mx-auto mb-4" />
+                                <p className="text-white/60">No responses available</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Add Response Section */}
+                          <div className="mt-4 pt-4 border-t border-white/20 flex-shrink-0">
+                            <div className="space-y-3">
+                              <label className="block text-sm font-medium text-white">Add Response</label>
+                              <textarea
+                                value={responseText}
+                                onChange={(e) => setResponseText(e.target.value)}
+                                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 text-gray-900 placeholder-gray-500 resize-none"
+                                rows={3}
+                                placeholder="Type your response..."
+                              />
+                              <div className="flex space-x-3">
+                                <Button
+                                  onClick={() => handleResponse(showMessageTrail.id)}
+                                  disabled={!responseText.trim() || isResponding}
+                                  className="flex-1 bg-custom-btn-gradient hover:opacity-90 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+                                >
+                                  {isResponding ? (
+                                    <div className="flex items-center space-x-2">
+                                      <RefreshCw className="w-4 h-4 animate-spin" />
+                                      <span>Sending...</span>
+                                    </div>
+                                  ) : (
+                                    "Send Response"
+                                  )}
+                                </Button>
+                                <Button
+                                  onClick={() => {
+                                    setResponseText("")
+                                    setShowMessageTrail(null)
+                                  }}
+                                  disabled={isResponding}
+                                  className="flex-1 bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   </div>
                 )}
@@ -1281,11 +1935,383 @@ export default function AdminDashboard() {
                     </Card>
                   </div>
                 )}
+
+                {activeTab === "video-upload" && (
+                  <div className="space-y-6 sm:space-y-8">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                      <h2 className="text-xl sm:text-2xl font-bold text-white">Video Upload</h2>
+                      <div className="text-white/60 text-sm">Upload feature demo videos (Max 150MB)</div>
+                    </div>
+
+                    <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+                      <CardContent className="p-4 sm:p-6">
+                        <div className="space-y-4">
+                          <div className="text-center">
+                            <div className="w-16 h-16 bg-custom-btn-gradient rounded-full flex items-center justify-center mx-auto mb-4">
+                              <Upload className="w-8 h-8 text-white" />
+                            </div>
+                            <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Upload Feature Video</h3>
+                            <p className="text-white/70 text-sm">Select your video file to upload (MP4, MOV, AVI supported)</p>
+                          </div>
+
+                          <div className="border-2 border-dashed border-white/30 rounded-lg p-6 text-center">
+                            <input
+                              type="file"
+                              accept="video/mp4,video/quicktime,video/x-msvideo"
+                              onChange={handleVideoUpload}
+                              className="hidden"
+                              id="video-upload"
+                            />
+                            <label
+                              htmlFor="video-upload"
+                              className="cursor-pointer block"
+                            >
+                              <Upload className="w-8 h-8 text-white/60 mx-auto mb-2" />
+                              <p className="text-white/80 text-sm">
+                                {videoUploadFile ? videoUploadFile.name : "Click to select video file"}
+                              </p>
+                            </label>
+                          </div>
+
+                          {videoUploadFile && (
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-white/80">File: {videoUploadFile.name}</span>
+                                <span className="text-white/60">{(videoUploadFile.size / 1024 / 1024).toFixed(2)} MB</span>
+                              </div>
+
+                              {videoUploadProgress > 0 && videoUploadProgress < 100 && (
+                                <div className="space-y-2">
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-white/80">Uploading...</span>
+                                    <span className="text-white/60">{videoUploadProgress}%</span>
+                                  </div>
+                                  <div className="w-full bg-white/20 rounded-full h-2">
+                                    <div 
+                                      className="bg-custom-btn-gradient h-2 rounded-full transition-all duration-300"
+                                      style={{ width: `${videoUploadProgress}%` }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="flex space-x-3">
+                                <Button
+                                  onClick={uploadVideoFile}
+                                  disabled={isVideoUploading || videoUploadFile.size > 150 * 1024 * 1024}
+                                  className="flex-1 bg-custom-btn-gradient hover:opacity-90 text-white font-medium"
+                                >
+                                  {isVideoUploading ? (
+                                    <div className="flex items-center space-x-2">
+                                      <RefreshCw className="w-4 h-4 animate-spin" />
+                                      <span>Uploading...</span>
+                                    </div>
+                                  ) : (
+                                    "Upload Video"
+                                  )}
+                                </Button>
+                                <Button
+                                  onClick={() => setVideoUploadFile(null)}
+                                  disabled={isVideoUploading}
+                                  className="flex-1 bg-transparent border border-white/60 text-white hover:bg-white/20 hover:border-white/80 font-medium"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+
+                              {videoUploadFile.size > 150 * 1024 * 1024 && (
+                                <div className="text-red-400 text-sm text-center">
+                                  File size exceeds 150MB limit
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Uploaded Videos List */}
+                    <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
+                      <CardContent className="p-4 sm:p-6">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-lg sm:text-xl font-semibold text-white">Uploaded Videos</h3>
+                            <Button
+                              onClick={fetchVideos}
+                              disabled={isLoadingVideos}
+                              variant="ghost"
+                              className="text-white/70 hover:text-white hover:bg-white/10"
+                            >
+                              <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingVideos ? 'animate-spin' : ''}`} />
+                              Refresh
+                            </Button>
+                          </div>
+
+                          {isLoadingVideos ? (
+                            <div className="text-center py-8">
+                              <RefreshCw className="w-8 h-8 text-white/40 mx-auto mb-4 animate-spin" />
+                              <p className="text-white/60">Loading videos...</p>
+                            </div>
+                          ) : uploadedVideos.length === 0 ? (
+                            <div className="text-center py-8">
+                              <Upload className="w-12 h-12 text-white/40 mx-auto mb-4" />
+                              <p className="text-white/60">No videos uploaded yet</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              {uploadedVideos.map((video) => (
+                                <div
+                                  key={video.id}
+                                  className={`rounded-lg p-4 border transition-colors ${
+                                    video.isDemo 
+                                      ? "bg-yellow-500/10 border-yellow-500/30 hover:bg-yellow-500/20" 
+                                      : "bg-white/5 border-white/10 hover:bg-white/10"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      {editingVideoId === video.id ? (
+                                        <div className="space-y-3">
+                                          <div>
+                                            <label className="block text-sm text-white/70 mb-1">Video Name</label>
+                                            <input
+                                              type="text"
+                                              value={editingVideoName}
+                                              onChange={(e) => setEditingVideoName(e.target.value)}
+                                              className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white placeholder-white/50 focus:ring-2 focus:ring-purple-400 focus:border-transparent"
+                                              placeholder="Enter video name"
+                                              autoFocus
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className="block text-sm text-white/70 mb-1">Description (Optional)</label>
+                                            <textarea
+                                              value={editingVideoDescription}
+                                              onChange={(e) => setEditingVideoDescription(e.target.value)}
+                                              className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white placeholder-white/50 focus:ring-2 focus:ring-purple-400 focus:border-transparent resize-none"
+                                              placeholder="Enter video description"
+                                              rows={2}
+                                            />
+                                          </div>
+                                          <div className="flex space-x-2">
+                                            <Button
+                                              onClick={saveVideoName}
+                                              disabled={isSavingVideo}
+                                              size="sm"
+                                              className="bg-custom-btn-gradient hover:opacity-90 text-white font-medium"
+                                            >
+                                              {isSavingVideo ? (
+                                                <div className="flex items-center space-x-2">
+                                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                                  <span>Saving...</span>
+                                                </div>
+                                              ) : (
+                                                "Save"
+                                              )}
+                                            </Button>
+                                            <Button
+                                              onClick={cancelEditingVideo}
+                                              size="sm"
+                                              variant="ghost"
+                                              className="text-white/70 hover:text-white hover:bg-white/10"
+                                            >
+                                              Cancel
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          <div className="flex items-center space-x-2">
+                                            <h4 className="text-white font-medium truncate">{video.filename}</h4>
+                                            {video.isDemo && (
+                                              <span className="bg-yellow-500/20 text-yellow-300 text-xs px-2 py-1 rounded-full border border-yellow-500/30">
+                                                DEMO
+                                              </span>
+                                            )}
+                                          </div>
+                                          {video.description && (
+                                            <p className="text-white/60 text-sm mt-1 line-clamp-2">{video.description}</p>
+                                          )}
+                                          <div className="flex items-center space-x-4 text-sm text-white/60 mt-1">
+                                            <span>{(video.size / 1024 / 1024).toFixed(2)} MB</span>
+                                            <span>{formatVideoDate(video.uploadDate)}</span>
+                                            <span>by {video.uploadedBy}</span>
+                                          </div>
+                                        </>
+                                      )}
+                                    </div>
+                                    {editingVideoId !== video.id && (
+                                      <div className="flex items-center space-x-2 ml-4">
+                                        <Button
+                                          onClick={() => setShowVideoPreview(video.url)}
+                                          variant="ghost"
+                                          size="sm"
+                                          className="text-white/70 hover:text-white hover:bg-white/10"
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                          onClick={() => toggleDemoVideo(video.id)}
+                                          disabled={togglingDemoVideo !== null}
+                                          variant="ghost"
+                                          size="sm"
+                                          className={`${
+                                            video.isDemo 
+                                              ? "text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10" 
+                                              : "text-white/70 hover:text-yellow-400 hover:bg-yellow-400/10"
+                                          } ${togglingDemoVideo === video.id ? "opacity-50 cursor-not-allowed" : ""}`}
+                                          title={
+                                            togglingDemoVideo === video.id 
+                                              ? "Updating..." 
+                                              : video.isDemo 
+                                                ? "Remove as demo video" 
+                                                : "Set as demo video"
+                                          }
+                                        >
+                                          {togglingDemoVideo === video.id ? (
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                          ) : (
+                                            <Star className={`w-4 h-4 ${video.isDemo ? "fill-current" : ""}`} />
+                                          )}
+                                        </Button>
+                                        <Button
+                                          onClick={() => startEditingVideo(video.id, video.filename, video.description || "")}
+                                          variant="ghost"
+                                          size="sm"
+                                          className="text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                                        >
+                                          <Edit3 className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                          onClick={() => setShowDeleteConfirm(video.id)}
+                                          disabled={deletingVideo !== null}
+                                          variant="ghost"
+                                          size="sm"
+                                          className={`text-red-400 hover:text-red-300 hover:bg-red-400/10 ${
+                                            deletingVideo === video.id ? "opacity-50 cursor-not-allowed" : ""
+                                          }`}
+                                          title={deletingVideo === video.id ? "Deleting..." : "Delete video"}
+                                        >
+                                          {deletingVideo === video.id ? (
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                          ) : (
+                                            <Trash2 className="w-4 h-4" />
+                                          )}
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Video Preview Modal */}
+      {showVideoPreview && (
+        <div 
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          onClick={() => setShowVideoPreview(null)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-300 ease-out" />
+          
+          {/* Modal Content */}
+          <div 
+            className="relative bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl max-w-5xl w-full animate-fade-in-scale overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              animation: 'fadeInScale 0.3s ease-out'
+            }}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowVideoPreview(null)}
+              className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200 hover:scale-110"
+              aria-label="Close video preview"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            {/* Video Player */}
+            <div className="relative aspect-video bg-black">
+              <video
+                className="w-full h-full"
+                controls
+                autoPlay
+                playsInline
+                muted
+                src={showVideoPreview}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+
+            {/* Video Info */}
+            <div className="p-6 bg-white/5">
+              <h3 className="text-2xl font-bold text-white mb-2">Video Preview</h3>
+              <p className="text-white/70">Click outside the video or press ESC to close</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowDeleteConfirm(null)}
+          />
+          
+          {/* Modal Content */}
+          <div className="relative bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-6 max-w-md w-full">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-8 h-8 text-red-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Delete Video</h3>
+              <p className="text-white/70 mb-6">
+                Are you sure you want to delete this video? This action cannot be undone.
+              </p>
+              
+              <div className="flex space-x-3">
+                <Button
+                  onClick={() => setShowDeleteConfirm(null)}
+                  variant="ghost"
+                  className="flex-1 text-white/70 hover:text-white hover:bg-white/10"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => deleteVideo(showDeleteConfirm)}
+                  disabled={deletingVideo !== null}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                >
+                  {deletingVideo === showDeleteConfirm ? (
+                    <div className="flex items-center space-x-2">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Deleting...</span>
+                    </div>
+                  ) : (
+                    "Delete Video"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="px-6 py-8 border-t border-white/10">

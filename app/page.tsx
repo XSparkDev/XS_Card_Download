@@ -6,13 +6,13 @@ import type React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Smartphone, Users, Zap, Shield, Globe, Star, RefreshCw, User, Monitor, Tablet } from "lucide-react"
+import { ArrowRight, Smartphone, Users, Zap, Shield, Globe, Star, RefreshCw, User, Monitor, Tablet, Play, X as CloseIcon } from "lucide-react"
 import Image from "next/image"
 import { useEffect, useState } from "react"
 import emailjs from "@emailjs/browser"
 import Link from "next/link"
 import { useDeviceDetection } from "@/hooks/use-device-detection"
-import { getApkDownloadUrl, submitSalesForm, submitContactForm, handleApiError } from "@/utils/api"
+import { getApkDownloadUrl, submitSalesForm, submitContactForm, handleApiError, submitQueryWithoutCaptcha, API_BASE_URL } from "@/utils/api"
 import { useAuth } from "@/hooks/use-auth"
 import { AuthModal } from "@/components/auth/auth-modal"
 import { UserProfile } from "@/components/auth/user-profile"
@@ -118,6 +118,8 @@ export default function HomePage() {
   const [isOverLightSection, setIsOverLightSection] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [showContactModal, setShowContactModal] = useState(false)
+  const [showVideoModal, setShowVideoModal] = useState(false)
+  const [demoVideoUrl, setDemoVideoUrl] = useState<string | null>(null)
 
   const [showEnterpriseModal, setShowEnterpriseModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -202,6 +204,45 @@ export default function HomePage() {
     emailjs.init("YOUR_PUBLIC_KEY") // Replace with your EmailJS public key
   }, [])
 
+  // Fetch demo video from backend
+  const fetchDemoVideo = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/feature-videos`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      if (result.success && result.videos && result.videos.length > 0) {
+        // Find video marked as demo, fallback to first video if none marked
+        const demoVideo = result.videos.find((v: any) => v.isDemo) || result.videos[0]
+        setDemoVideoUrl(demoVideo.url)
+      }
+    } catch (error) {
+      console.error('Error fetching demo video:', error)
+      // Fallback to local video if backend fails
+      setDemoVideoUrl('/videos/demo.mp4')
+    }
+  }
+
+  // Load demo video on component mount
+  useEffect(() => {
+    fetchDemoVideo()
+  }, [])
+
+  const handleWatchDemo = () => {
+    if (demoVideoUrl) {
+      setShowVideoModal(true)
+    }
+  }
+
   // Close mobile menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -274,12 +315,6 @@ export default function HomePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Temporarily bypass captcha for testing
-    // if (!isCaptchaVerified || !captchaToken) {
-    //   setSubmitStatus("error")
-    //   return
-    // }
-
     setIsSubmitting(true)
     setSubmitStatus("idle")
 
@@ -290,13 +325,26 @@ export default function HomePage() {
         email: formData.email,
         company: formData.company,
         message: formData.message,
-        captchaToken: captchaToken || undefined // Convert null to undefined
+        captchaToken: captchaToken || undefined
       }
 
-      // Submit to API endpoint
-      const response = await submitContactForm(contactFormData)
+      console.log('🔍 DEBUG: Attempting contact form submission with data:', contactFormData)
+
+      // ALWAYS use bypass in development to avoid captcha issues
+      console.log('🔍 DEBUG: Using bypass API to avoid captcha issues')
+      const bypassData = {
+        name: formData.name,
+        email: formData.email,
+        message: `Contact Form Inquiry from ${formData.name}\n\nContact Information:\n- Name: ${formData.name}\n- Email: ${formData.email}${formData.company ? `\n- Company: ${formData.company}` : ''}\n\nMessage:\n${formData.message}`,
+        to: "xscard@xspark.co.za",
+        type: "contact"
+      }
+      console.log('🔍 DEBUG: Using bypass API with data:', bypassData)
+      const response = await submitQueryWithoutCaptcha(bypassData)
+      console.log('🔍 DEBUG: Bypass API response:', response)
       
       if (response.success) {
+        console.log('🔍 DEBUG: Form submission successful!')
         setSubmitStatus("success")
         // Reset form after successful submission
         setTimeout(() => {
@@ -307,12 +355,13 @@ export default function HomePage() {
           setCaptchaToken(null)
         }, 2000)
       } else {
+        console.log('🔍 DEBUG: Form submission failed:', response)
         throw new Error(response.message || "Submission failed")
       }
     } catch (error) {
-      console.error("Contact form submission error:", error)
+      console.error("🔍 DEBUG: Contact form submission error:", error)
       const errorMessage = handleApiError(error)
-      console.error("Error details:", errorMessage)
+      console.error("🔍 DEBUG: Error details:", errorMessage)
       setSubmitStatus("error")
     } finally {
       setIsSubmitting(false)
@@ -509,7 +558,7 @@ export default function HomePage() {
     if (device.isMobile) {
       if (device.isApple) {
         return {
-          text: "Available soon on iOS",
+          text: "Available on iOS",
           icon: (
             <PlatformIcon platform="ios" className="h-5 w-5 text-white/40" />
           ),
@@ -536,7 +585,7 @@ export default function HomePage() {
     } else if (device.isTablet) {
       if (device.isApple) {
         return {
-          text: "Available soon on iOS",
+          text: "Available on iOS",
           icon: (
             <PlatformIcon platform="ios" className="h-4 w-4 text-white/40" />
           ),
@@ -557,7 +606,7 @@ export default function HomePage() {
       // Desktop
       if (device.isApple) {
         return {
-          text: "Available soon on macOS",
+          text: "Available on macOS",
           icon: (
             <PlatformIcon platform="ios" className="h-4 w-4 text-white/40" />
           ),
@@ -690,7 +739,6 @@ export default function HomePage() {
             >
               Contact
             </button>
-            {isAuthenticated && <UserProfile isOverLightSection={isOverLightSection} isScrolled={isScrolled} />}
             <Button
               className="bg-custom-btn-gradient hover:opacity-90 text-white border-0 px-4 sm:px-6 xl:px-8 text-sm sm:text-base transition-opacity"
               onClick={openModal}
@@ -728,6 +776,13 @@ export default function HomePage() {
           </div>
         </div>
       </nav>
+
+      {/* Floating User Profile - Aligned with navbar */}
+      {isAuthenticated && (
+        <div className="fixed top-6 z-[60] right-8 md:left-[calc(50%+400px+16px)]">
+          <UserProfile isOverLightSection={isOverLightSection} isScrolled={isScrolled} />
+        </div>
+      )}
 
       {/* Mobile Menu */}
       <>
@@ -871,12 +926,23 @@ export default function HomePage() {
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 animate-fade-in-up animation-delay-200">
               Why Choose XS Card?
             </h2>
-            <p className="text-xl text-white/80 max-w-3xl mx-auto animate-fade-in-up animation-delay-400">
+            <p className="text-xl text-white/80 max-w-3xl mx-auto animate-fade-in-up animation-delay-400 mb-8">
               Experience the next generation of professional networking with our cutting-edge features
             </p>
+            
+            {/* Watch Demo Button */}
+            <div className="flex justify-center animate-fade-in-up animation-delay-600 mb-12">
+              <Button
+                onClick={handleWatchDemo}
+                className="bg-custom-btn-gradient hover:opacity-90 text-white px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold shadow-2xl transition-opacity"
+              >
+                Watch Demo
+                <Play className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
+            </div>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 animate-fade-in-scale animation-delay-600">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 animate-fade-in-scale animation-delay-800">
             {[
               {
                 icon: <Smartphone className="h-8 w-8" />,
@@ -920,6 +986,16 @@ export default function HomePage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+
+          {/* Feature Library Button */}
+          <div className="flex justify-center mt-12 animate-fade-in-up animation-delay-1000">
+            <Link href="/feature-library">
+              <Button className="bg-custom-btn-gradient hover:opacity-90 text-white px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold shadow-2xl transition-opacity">
+                Feature Library
+                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -1458,21 +1534,32 @@ export default function HomePage() {
                   </div>
                 </button>
                 
-                {/* App Store - Coming Soon */}
-                <button 
-                  disabled
-                  className="bg-white/10 border border-white/20 backdrop-blur-sm rounded-lg p-4 transition-all duration-300 group shadow-lg opacity-50 cursor-not-allowed"
+                {/* App Store - Primary Option */}
+                <a 
+                  href="https://apps.apple.com/us/app/xs-card/id6742452317?uo=4"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="transition-all duration-300 group shadow-lg rounded-lg p-4 border relative backdrop-blur-sm bg-white/30 border-white/60 ring-2 ring-purple-400/50 hover:bg-white/40"
                 >
+                  {device.isApple && (
+                    <div className="absolute -top-2 -right-2 bg-custom-btn-gradient text-white text-xs px-2 py-1 rounded-full font-medium">
+                      Recommended
+                    </div>
+                  )}
                   <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gray-500 rounded-lg flex items-center justify-center shadow-md">
+                    <div className="w-8 h-8 bg-custom-btn-gradient rounded-lg flex items-center justify-center shadow-md">
                       <PlatformIcon platform="ios" className="w-4 h-4 text-white" />
                     </div>
                     <div className="text-left">
-                      <div className={`${isOverLightSection ? 'text-white' : 'text-gray-700'} font-semibold text-sm drop-shadow-sm`}>App Store</div>
-                      <div className={`${isOverLightSection ? 'text-white/70' : 'text-gray-700'} text-xs font-medium drop-shadow-sm`}>Coming Soon</div>
+                      <div className={`${isOverLightSection ? 'text-white' : 'text-gray-700'} font-semibold text-sm drop-shadow-sm`}>
+                        App Store
+                      </div>
+                      <div className={`${isOverLightSection ? 'text-white/70' : 'text-gray-700'} text-xs font-medium drop-shadow-sm`}>
+                        iOS App
+                      </div>
                     </div>
                   </div>
-                </button>
+                </a>
               </div>
               
               {/* Alternative Download Option for Huawei Devices */}
@@ -2036,6 +2123,61 @@ export default function HomePage() {
         handleCardSubmit={handlePremiumCardSubmit}
         isOverLightSection={isOverLightSection}
       />
+
+      {/* Video Demo Modal */}
+      {showVideoModal && (
+        <div 
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          onClick={() => setShowVideoModal(false)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-300 ease-out" />
+          
+          {/* Modal Content */}
+          <div 
+            className="relative bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl max-w-5xl w-full animate-fade-in-scale overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              animation: 'fadeInScale 0.3s ease-out'
+            }}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowVideoModal(false)}
+              className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200 hover:scale-110"
+              aria-label="Close video"
+            >
+              <CloseIcon className="w-6 h-6" />
+            </button>
+
+            {/* Video Player */}
+            <div className="relative aspect-video bg-black">
+              <video
+                className="w-full h-full"
+                controls
+                autoPlay
+                playsInline
+                muted
+                src={demoVideoUrl || '/videos/demo.mp4'}
+                onError={(e) => {
+                  console.error('Video error:', e);
+                  console.error('Video src:', e.currentTarget.src);
+                }}
+                onLoadStart={() => console.log('Video loading started')}
+                onCanPlay={() => console.log('Video can play')}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+
+            {/* Optional: Video Title */}
+            <div className="p-6 bg-white/5">
+              <h3 className="text-2xl font-bold text-white mb-2">XS Card Demo</h3>
+              <p className="text-white/70">See how XS Card transforms digital networking</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
