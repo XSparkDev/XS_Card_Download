@@ -12,12 +12,14 @@ import { useEffect, useState } from "react"
 import emailjs from "@emailjs/browser"
 import Link from "next/link"
 import { useDeviceDetection } from "@/hooks/use-device-detection"
-import { getApkDownloadUrl, submitSalesForm, submitContactForm, handleApiError, submitQueryWithoutCaptcha, API_BASE_URL } from "@/utils/api"
+import { getApkDownloadUrl, submitSalesForm, submitContactForm, handleApiError, submitQueryWithoutCaptcha, API_BASE_URL, isDevelopment } from "@/utils/api"
 import { useAuth } from "@/hooks/use-auth"
 import { AuthModal } from "@/components/auth/auth-modal"
 import { UserProfile } from "@/components/auth/user-profile"
 import { useAuthGuard } from "@/hooks/use-auth-guard"
 import { AuthGuardModal } from "@/components/auth/auth-guard-modal"
+import { useToast } from "@/hooks/use-toast"
+import { Toaster } from "@/components/ui/toaster"
 import { usePremiumAuthGuard } from "@/hooks/use-premium-auth-guard"
 import { PremiumAuthModal } from "@/components/auth/premium-auth-modal"
 import { HCaptchaComponent } from "@/components/ui/hcaptcha"
@@ -77,6 +79,7 @@ const PlatformIcon = ({ platform, className }: { platform: string; className?: s
 export default function HomePage() {
   const device = useDeviceDetection()
   const { user, isAuthenticated } = useAuth()
+  const { toast } = useToast()
   const {
     navigateToProtectedRoute,
     showAuthModal,
@@ -330,22 +333,39 @@ export default function HomePage() {
 
       console.log('🔍 DEBUG: Attempting contact form submission with data:', contactFormData)
 
-      // ALWAYS use bypass in development to avoid captcha issues
-      console.log('🔍 DEBUG: Using bypass API to avoid captcha issues')
-      const bypassData = {
-        name: formData.name,
-        email: formData.email,
-        message: `Contact Form Inquiry from ${formData.name}\n\nContact Information:\n- Name: ${formData.name}\n- Email: ${formData.email}${formData.company ? `\n- Company: ${formData.company}` : ''}\n\nMessage:\n${formData.message}`,
-        to: "xscard@xspark.co.za",
-        type: "contact"
+      let response
+      
+      // Use environment detection to determine submission method
+      if (isDevelopment) {
+        // Development: Use bypass for convenience
+        console.log('🔍 DEBUG: Development environment - using bypass API')
+        const bypassData = {
+          name: formData.name,
+          email: formData.email,
+          message: `Contact Form Inquiry from ${formData.name}\n\nContact Information:\n- Name: ${formData.name}\n- Email: ${formData.email}${formData.company ? `\n- Company: ${formData.company}` : ''}\n\nMessage:\n${formData.message}`,
+          to: "xscard@xspark.co.za",
+          type: "contact"
+        }
+        response = await submitQueryWithoutCaptcha(bypassData)
+      } else {
+        // Production: Use real captcha verification
+        console.log('🔍 DEBUG: Production environment - using real captcha verification')
+        response = await submitContactForm(contactFormData)
       }
-      console.log('🔍 DEBUG: Using bypass API with data:', bypassData)
-      const response = await submitQueryWithoutCaptcha(bypassData)
-      console.log('🔍 DEBUG: Bypass API response:', response)
+      
+      console.log('🔍 DEBUG: API response:', response)
       
       if (response.success) {
         console.log('🔍 DEBUG: Form submission successful!')
         setSubmitStatus("success")
+        
+        // Show success toast
+        toast({
+          title: "Message Sent Successfully!",
+          description: "Thank you for your message. We'll get back to you soon.",
+          variant: "default",
+        })
+        
         // Reset form after successful submission
         setTimeout(() => {
           setFormData({ name: "", email: "", company: "", message: "" })
@@ -363,6 +383,13 @@ export default function HomePage() {
       const errorMessage = handleApiError(error)
       console.error("🔍 DEBUG: Error details:", errorMessage)
       setSubmitStatus("error")
+      
+      // Show error toast
+      toast({
+        title: "Failed to Send Message",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -489,6 +516,13 @@ export default function HomePage() {
       if (response.success) {
         setEnterpriseSubmitStatus("success")
         
+        // Show success toast
+        toast({
+          title: "Enterprise Inquiry Sent Successfully!",
+          description: "Thank you for your interest. Our team will contact you soon to discuss your requirements.",
+          variant: "default",
+        })
+        
         // Reset form after successful submission
         setTimeout(() => {
           setEnterpriseForm({
@@ -516,6 +550,13 @@ export default function HomePage() {
       const errorMessage = handleApiError(error)
       console.error("Error details:", errorMessage)
       setEnterpriseSubmitStatus("error")
+      
+      // Show error toast
+      toast({
+        title: "Failed to Send Enterprise Inquiry",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
       setIsEnterpriseSubmitting(false)
     }
@@ -2178,6 +2219,9 @@ export default function HomePage() {
           </div>
         </div>
       )}
+      
+      {/* Toast notifications */}
+      <Toaster />
     </div>
   )
 }
