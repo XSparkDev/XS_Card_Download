@@ -221,8 +221,9 @@ export default function HomePage() {
       const result = await response.json()
       
       if (result.success && result.videos && result.videos.length > 0) {
-        // Use the first video as demo video (you can change this logic)
-        setDemoVideoUrl(result.videos[0].url)
+        // Find video marked as demo, fallback to first video if none marked
+        const demoVideo = result.videos.find((v: any) => v.isDemo) || result.videos[0]
+        setDemoVideoUrl(demoVideo.url)
       }
     } catch (error) {
       console.error('Error fetching demo video:', error)

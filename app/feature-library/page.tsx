@@ -24,6 +24,7 @@ interface VideoFeature {
   uploadDate: string;
   uploadedBy: string;
   description?: string;
+  isDemo?: boolean;
 }
 
 // Platform Icon Component
@@ -244,27 +245,47 @@ export default function FeatureLibrary() {
           {/* Desktop and Tablet Navigation (md and up) */}
           <div className="hidden md:flex items-center space-x-6 xl:space-x-8">
             <Link href="/">
-              <button className="transition-colors font-medium cursor-pointer text-gray-700 hover:text-purple-600">
+              <button className={`transition-colors font-medium cursor-pointer ${
+                isScrolled
+                  ? "text-white/90 hover:text-white"
+                  : "text-gray-700 hover:text-purple-600"
+              }`}>
                 Home
               </button>
             </Link>
             <Link href="/#pricing">
-              <button className="transition-colors font-medium cursor-pointer text-gray-700 hover:text-purple-600">
+              <button className={`transition-colors font-medium cursor-pointer ${
+                isScrolled
+                  ? "text-white/90 hover:text-white"
+                  : "text-gray-700 hover:text-purple-600"
+              }`}>
                 Pricing
               </button>
             </Link>
             <Link href="/#teams">
-              <button className="transition-colors font-medium cursor-pointer text-gray-700 hover:text-purple-600">
+              <button className={`transition-colors font-medium cursor-pointer ${
+                isScrolled
+                  ? "text-white/90 hover:text-white"
+                  : "text-gray-700 hover:text-purple-600"
+              }`}>
                 Teams
               </button>
             </Link>
             <Link href="/#environmental-impact">
-              <button className="transition-colors font-medium cursor-pointer text-gray-700 hover:text-green-600">
+              <button className={`transition-colors font-medium cursor-pointer ${
+                isScrolled
+                  ? "text-white/90 hover:text-white"
+                  : "text-gray-700 hover:text-green-600"
+              }`}>
                 Impact
               </button>
             </Link>
             <Link href="/#contact">
-              <button className="transition-colors font-medium cursor-pointer text-gray-700 hover:text-purple-600">
+              <button className={`transition-colors font-medium cursor-pointer ${
+                isScrolled
+                  ? "text-white/90 hover:text-white"
+                  : "text-gray-700 hover:text-purple-600"
+              }`}>
                 Contact
               </button>
             </Link>
@@ -332,7 +353,11 @@ export default function FeatureLibrary() {
               <Link href="/">
                 <button
                   onClick={() => setShowMobileMenu(false)}
-                  className="block w-full text-left px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
+                  className={`block w-full text-left px-4 py-2 rounded-md transition-colors ${
+                    isScrolled
+                      ? "text-white/90 hover:text-white hover:bg-white/10"
+                      : "text-gray-700 hover:text-purple-600 hover:bg-purple-50"
+                  }`}
                 >
                   Home
                 </button>
@@ -340,7 +365,11 @@ export default function FeatureLibrary() {
               <Link href="/#pricing">
                 <button
                   onClick={() => setShowMobileMenu(false)}
-                  className="block w-full text-left px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
+                  className={`block w-full text-left px-4 py-2 rounded-md transition-colors ${
+                    isScrolled
+                      ? "text-white/90 hover:text-white hover:bg-white/10"
+                      : "text-gray-700 hover:text-purple-600 hover:bg-purple-50"
+                  }`}
                 >
                   Pricing
                 </button>
@@ -348,7 +377,11 @@ export default function FeatureLibrary() {
               <Link href="/#teams">
                 <button
                   onClick={() => setShowMobileMenu(false)}
-                  className="block w-full text-left px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
+                  className={`block w-full text-left px-4 py-2 rounded-md transition-colors ${
+                    isScrolled
+                      ? "text-white/90 hover:text-white hover:bg-white/10"
+                      : "text-gray-700 hover:text-purple-600 hover:bg-purple-50"
+                  }`}
                 >
                   Teams
                 </button>
@@ -356,7 +389,11 @@ export default function FeatureLibrary() {
               <Link href="/#environmental-impact">
                 <button
                   onClick={() => setShowMobileMenu(false)}
-                  className="block w-full text-left px-4 py-2 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
+                  className={`block w-full text-left px-4 py-2 rounded-md transition-colors ${
+                    isScrolled
+                      ? "text-white/90 hover:text-white hover:bg-white/10"
+                      : "text-gray-700 hover:text-green-600 hover:bg-green-50"
+                  }`}
                 >
                   Impact
                 </button>
@@ -364,7 +401,11 @@ export default function FeatureLibrary() {
               <Link href="/#contact">
                 <button
                   onClick={() => setShowMobileMenu(false)}
-                  className="block w-full text-left px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
+                  className={`block w-full text-left px-4 py-2 rounded-md transition-colors ${
+                    isScrolled
+                      ? "text-white/90 hover:text-white hover:bg-white/10"
+                      : "text-gray-700 hover:text-purple-600 hover:bg-purple-50"
+                  }`}
                 >
                   Contact
                 </button>

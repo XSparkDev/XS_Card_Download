@@ -21,6 +21,7 @@ import {
   History,
   Trash2,
   Edit3,
+  Star,
 } from "lucide-react"
 import Image from "next/image"
 import { useState, useEffect } from "react"
@@ -84,6 +85,7 @@ export default function AdminDashboard() {
     uploadDate: string;
     uploadedBy: string;
     description?: string;
+    isDemo?: boolean;
   }>>([])
   const [isLoadingVideos, setIsLoadingVideos] = useState(false)
   const [showVideoPreview, setShowVideoPreview] = useState<string | null>(null)
@@ -91,6 +93,9 @@ export default function AdminDashboard() {
   const [editingVideoName, setEditingVideoName] = useState<string>("")
   const [editingVideoDescription, setEditingVideoDescription] = useState<string>("")
   const [isSavingVideo, setIsSavingVideo] = useState(false)
+  const [togglingDemoVideo, setTogglingDemoVideo] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
+  const [deletingVideo, setDeletingVideo] = useState<string | null>(null)
   const [filters, setFilters] = useState({
     type: "",
     status: ""
@@ -330,6 +335,18 @@ export default function AdminDashboard() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showMobileMenu])
+
+  // Handle escape key for delete confirmation
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showDeleteConfirm) {
+        setShowDeleteConfirm(null)
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [showDeleteConfirm])
 
   // Handle modal keyboard events
   useEffect(() => {
@@ -573,6 +590,11 @@ export default function AdminDashboard() {
   }
 
   const deleteVideo = async (videoId: string) => {
+    if (deletingVideo) return // Prevent multiple simultaneous deletions
+    
+    setDeletingVideo(videoId)
+    setShowDeleteConfirm(null)
+    
     try {
       const user = auth.currentUser
       if (!user) {
@@ -612,6 +634,8 @@ export default function AdminDashboard() {
         description: error instanceof Error ? error.message : 'Failed to delete video',
         variant: "destructive",
       })
+    } finally {
+      setDeletingVideo(null)
     }
   }
 
@@ -671,6 +695,60 @@ export default function AdminDashboard() {
     setEditingVideoId(null)
     setEditingVideoName("")
     setEditingVideoDescription("")
+  }
+
+  const toggleDemoVideo = async (videoId: string) => {
+    if (togglingDemoVideo) return // Prevent multiple simultaneous requests
+    
+    setTogglingDemoVideo(videoId)
+    try {
+      const user = auth.currentUser
+      if (!user) {
+        throw new Error('User not authenticated')
+      }
+
+      const idToken = await user.getIdToken()
+      
+      const response = await fetch(`${API_BASE_URL}/api/feature-videos/${videoId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ isDemo: true })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        // Update local state - set all videos to isDemo=false, then set the target to true
+        setUploadedVideos(prev => prev.map(video => ({
+          ...video,
+          isDemo: video.id === videoId
+        })))
+        
+        toast({
+          title: "Demo Video Updated!",
+          description: "The demo video has been changed successfully.",
+          variant: "default",
+        })
+      } else {
+        throw new Error(result.message || 'Failed to update demo video')
+      }
+    } catch (error) {
+      console.error('Error toggling demo video:', error)
+      toast({
+        title: "Failed to Update Demo Video",
+        description: error instanceof Error ? error.message : 'Failed to update demo video',
+        variant: "destructive",
+      })
+    } finally {
+      setTogglingDemoVideo(null)
+    }
   }
 
   const saveVideoName = async () => {
@@ -1984,7 +2062,11 @@ export default function AdminDashboard() {
                               {uploadedVideos.map((video) => (
                                 <div
                                   key={video.id}
-                                  className="bg-white/5 rounded-lg p-4 border border-white/10 hover:bg-white/10 transition-colors"
+                                  className={`rounded-lg p-4 border transition-colors ${
+                                    video.isDemo 
+                                      ? "bg-yellow-500/10 border-yellow-500/30 hover:bg-yellow-500/20" 
+                                      : "bg-white/5 border-white/10 hover:bg-white/10"
+                                  }`}
                                 >
                                   <div className="flex items-center justify-between">
                                     <div className="flex-1 min-w-0">
@@ -2039,7 +2121,14 @@ export default function AdminDashboard() {
                                         </div>
                                       ) : (
                                         <>
-                                          <h4 className="text-white font-medium truncate">{video.filename}</h4>
+                                          <div className="flex items-center space-x-2">
+                                            <h4 className="text-white font-medium truncate">{video.filename}</h4>
+                                            {video.isDemo && (
+                                              <span className="bg-yellow-500/20 text-yellow-300 text-xs px-2 py-1 rounded-full border border-yellow-500/30">
+                                                DEMO
+                                              </span>
+                                            )}
+                                          </div>
                                           {video.description && (
                                             <p className="text-white/60 text-sm mt-1 line-clamp-2">{video.description}</p>
                                           )}
@@ -2062,6 +2151,30 @@ export default function AdminDashboard() {
                                           <Eye className="w-4 h-4" />
                                         </Button>
                                         <Button
+                                          onClick={() => toggleDemoVideo(video.id)}
+                                          disabled={togglingDemoVideo !== null}
+                                          variant="ghost"
+                                          size="sm"
+                                          className={`${
+                                            video.isDemo 
+                                              ? "text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10" 
+                                              : "text-white/70 hover:text-yellow-400 hover:bg-yellow-400/10"
+                                          } ${togglingDemoVideo === video.id ? "opacity-50 cursor-not-allowed" : ""}`}
+                                          title={
+                                            togglingDemoVideo === video.id 
+                                              ? "Updating..." 
+                                              : video.isDemo 
+                                                ? "Remove as demo video" 
+                                                : "Set as demo video"
+                                          }
+                                        >
+                                          {togglingDemoVideo === video.id ? (
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                          ) : (
+                                            <Star className={`w-4 h-4 ${video.isDemo ? "fill-current" : ""}`} />
+                                          )}
+                                        </Button>
+                                        <Button
                                           onClick={() => startEditingVideo(video.id, video.filename, video.description || "")}
                                           variant="ghost"
                                           size="sm"
@@ -2070,12 +2183,20 @@ export default function AdminDashboard() {
                                           <Edit3 className="w-4 h-4" />
                                         </Button>
                                         <Button
-                                          onClick={() => deleteVideo(video.id)}
+                                          onClick={() => setShowDeleteConfirm(video.id)}
+                                          disabled={deletingVideo !== null}
                                           variant="ghost"
                                           size="sm"
-                                          className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                                          className={`text-red-400 hover:text-red-300 hover:bg-red-400/10 ${
+                                            deletingVideo === video.id ? "opacity-50 cursor-not-allowed" : ""
+                                          }`}
+                                          title={deletingVideo === video.id ? "Deleting..." : "Delete video"}
                                         >
-                                          <Trash2 className="w-4 h-4" />
+                                          {deletingVideo === video.id ? (
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                          ) : (
+                                            <Trash2 className="w-4 h-4" />
+                                          )}
                                         </Button>
                                       </div>
                                     )}
@@ -2139,6 +2260,54 @@ export default function AdminDashboard() {
             <div className="p-6 bg-white/5">
               <h3 className="text-2xl font-bold text-white mb-2">Video Preview</h3>
               <p className="text-white/70">Click outside the video or press ESC to close</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowDeleteConfirm(null)}
+          />
+          
+          {/* Modal Content */}
+          <div className="relative bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-6 max-w-md w-full">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-8 h-8 text-red-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Delete Video</h3>
+              <p className="text-white/70 mb-6">
+                Are you sure you want to delete this video? This action cannot be undone.
+              </p>
+              
+              <div className="flex space-x-3">
+                <Button
+                  onClick={() => setShowDeleteConfirm(null)}
+                  variant="ghost"
+                  className="flex-1 text-white/70 hover:text-white hover:bg-white/10"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => deleteVideo(showDeleteConfirm)}
+                  disabled={deletingVideo !== null}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                >
+                  {deletingVideo === showDeleteConfirm ? (
+                    <div className="flex items-center space-x-2">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Deleting...</span>
+                    </div>
+                  ) : (
+                    "Delete Video"
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
