@@ -18,7 +18,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
-import { submitContactForm, handleApiError, submitQueryWithoutCaptcha } from "@/utils/api"
+import { submitContactForm, handleApiError, submitQueryWithoutCaptcha, isDevelopment } from "@/utils/api"
 import { HCaptchaComponent } from "@/components/ui/hcaptcha"
 
 export default function PrivacyPolicy() {
@@ -81,13 +81,12 @@ export default function PrivacyPolicy() {
         captchaToken: captchaToken || undefined
       }
 
-      // Try the main API first
       let response
-      try {
-        response = await submitContactForm(contactFormData)
-      } catch (apiError) {
-        console.log("Main API failed, trying bypass...")
-        // If main API fails, try the bypass (for development/testing)
+      
+      // Use environment detection to determine submission method
+      if (isDevelopment) {
+        // Development: Use bypass for convenience
+        console.log('🔍 DEBUG: Development environment - using bypass API')
         const bypassData = {
           name: formData.name,
           email: formData.email,
@@ -96,10 +95,21 @@ export default function PrivacyPolicy() {
           type: "contact"
         }
         response = await submitQueryWithoutCaptcha(bypassData)
+      } else {
+        // Production: Use real captcha verification
+        console.log('🔍 DEBUG: Production environment - using real captcha verification')
+        response = await submitContactForm(contactFormData)
       }
 
       console.log("Contact form submitted successfully:", response)
       setSubmitStatus("success")
+      
+      // Show success toast
+      toast({
+        title: "Message Sent Successfully!",
+        description: "Thank you for your message. We'll get back to you soon.",
+        variant: "default",
+      })
       
       // Reset form
       setFormData({
@@ -116,6 +126,13 @@ export default function PrivacyPolicy() {
       const errorMessage = handleApiError(error)
       console.error("Error details:", errorMessage)
       setSubmitStatus("error")
+      
+      // Show error toast
+      toast({
+        title: "Failed to Send Message",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
       setIsSubmitting(false)
     }
