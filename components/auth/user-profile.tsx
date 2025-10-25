@@ -94,33 +94,33 @@ export const UserProfile: React.FC<UserProfileProps> = ({ isOverLightSection = f
             </div>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className={`w-56 backdrop-blur-lg shadow-2xl ${isOverLightSection || !isScrolled ? "bg-slate-900/90 border border-slate-700/50" : "bg-white/25 border border-white/30"}`} align="end" forceMount>
+        <DropdownMenuContent className="w-56 backdrop-blur-lg shadow-2xl bg-slate-900/90 border border-slate-700/50" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className={`text-sm font-medium leading-none ${isOverLightSection || !isScrolled ? "text-white" : "text-slate-900"}`}>
+              <p className="text-sm font-medium leading-none text-white">
                 {user.displayName || 'User'}
               </p>
-              <p className={`text-xs leading-none ${isOverLightSection || !isScrolled ? "text-white/70" : "text-slate-600"}`}>
+              <p className="text-xs leading-none text-white/70">
                 {user.email}
               </p>
             </div>
           </DropdownMenuLabel>
-          <DropdownMenuSeparator className={isOverLightSection || !isScrolled ? "bg-slate-700/50" : "bg-white/20"} />
+          <DropdownMenuSeparator className="bg-slate-700/50" />
           
           <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
             <DialogTrigger asChild>
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className={`${isOverLightSection || !isScrolled ? "text-white hover:bg-slate-800/50 focus:bg-slate-800/50" : "text-slate-900 hover:bg-white/20 focus:bg-white/20"}`}>
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-white hover:bg-slate-800/50 focus:bg-slate-800/50">
             <Settings className="mr-2 h-4 w-4" />
             <span>Reset Password</span>
           </DropdownMenuItem>
             </DialogTrigger>
-            <DialogContent className={`backdrop-blur-lg ${isOverLightSection || !isScrolled ? "bg-slate-900/90 border border-slate-700/50" : "bg-white/25 border border-white/30"}`}>
+            <DialogContent className="backdrop-blur-lg bg-slate-900/90 border border-slate-700/50">
               <DialogHeader>
-                <DialogTitle className={`${isOverLightSection || !isScrolled ? "text-white" : "text-slate-900"}`}>Reset Password</DialogTitle>
+                <DialogTitle className="text-white">Reset Password</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleResetPassword} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="reset-email" className={`${isOverLightSection || !isScrolled ? "text-white" : "text-slate-900"}`}>Email</Label>
+                  <Label htmlFor="reset-email" className="text-white">Email</Label>
                   <Input
                     id="reset-email"
                     type="email"
@@ -128,7 +128,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ isOverLightSection = f
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
                     required
-                    className={`${isOverLightSection || !isScrolled ? "bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400" : "bg-white/50 border-white/20 text-slate-900 placeholder:text-slate-500"}`}
+                    className="bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400"
                   />
                 </div>
                 
@@ -146,7 +146,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ isOverLightSection = f
             </DialogContent>
           </Dialog>
 
-          <DropdownMenuItem onClick={handleSignOut} disabled={loading} className={`${isOverLightSection || !isScrolled ? "text-white hover:bg-slate-800/50 focus:bg-slate-800/50" : "text-slate-900 hover:bg-white/20 focus:bg-white/20"}`}>
+          <DropdownMenuItem onClick={handleSignOut} disabled={loading} className="text-white hover:bg-slate-800/50 focus:bg-slate-800/50">
             <LogOut className="mr-2 h-4 w-4" />
             <span>Sign out</span>
             {loading && <Loader2 className="ml-auto h-4 w-4 animate-spin" />}

@@ -57,7 +57,7 @@ const getApiBaseUrl = (): string => {
         hostname.includes('github.io') ||
         hostname.includes('firebaseapp.com')) {
       console.log('🔍 DEBUG: API Config - Using production URL');
-      return 'https://xscard-app-8ign.onrender.com';
+      return 'https://baseUrl.xscard.co.za';
     }
     
     // Ngrok detection - when using ngrok for development
@@ -75,10 +75,10 @@ const getApiBaseUrl = (): string => {
         hostname.includes('.local') ||
         hostname.includes('dev.') ||
         hostname.includes('staging.')) {
-      console.log('🔍 DEBUG: API Config - Using production backend (local development)');
-      // Use production backend for local development
-     //return 'http://localhost:8383';
-     return 'https://xscard-app-8ign.onrender.com';
+      console.log('🔍 DEBUG: API Config - Using localhost backend (local development)');
+      // Use localhost backend for local development
+      return 'https://baseUrl.xscard.co.za';
+    // return 'http://localhost:8383';
     }
   }
   
@@ -91,7 +91,8 @@ const getApiBaseUrl = (): string => {
     if (process.env.NODE_ENV === 'development') {
       console.log('🔍 DEBUG: API Config - Using localhost backend (development env)');
       // Use HTTP for local development
-      return 'http://localhost:8383';
+      //return 'http://localhost:8383';
+      return 'https://baseUrl.xscard.co.za';
     }
   }
   
@@ -398,16 +399,22 @@ export async function verifyHCaptchaToken(token: string): Promise<boolean> {
 /**
  * TEMPORARY: Submit query without captcha verification for testing
  * This should only be used for development/testing when backend captcha verification is not working
+ * PRODUCTION SAFETY: This function will throw an error if called in production
  */
 export async function submitQueryWithoutCaptcha(data: Omit<QueryRequest, 'captchaToken'>): Promise<ApiResponse> {
-  console.log('🔍 Submitting query without captcha verification (TEMPORARY):', {
+  // PRODUCTION SAFETY: Prevent bypass tokens in production
+  if (isProduction) {
+    throw new Error('Bypass captcha is not allowed in production. Use submitQuery with real captcha token instead.');
+  }
+  
+  console.log('🔍 Submitting query without captcha verification (DEVELOPMENT ONLY):', {
     ...data,
     captchaToken: 'BYPASSED'
   });
   
   const requestData: QueryRequest = {
     ...data,
-    captchaToken: undefined // Remove captcha token
+    captchaToken: 'BYPASSED_FOR_DEV' // Use a special bypass token for development
   };
   
   return apiRequest<ApiResponse>(API_ENDPOINTS.SUBMIT_QUERY, {

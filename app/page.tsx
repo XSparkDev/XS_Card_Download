@@ -6,18 +6,20 @@ import type React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Smartphone, Users, Zap, Shield, Globe, Star, RefreshCw, User, Monitor, Tablet } from "lucide-react"
+import { ArrowRight, Smartphone, Users, Zap, Shield, Globe, Star, RefreshCw, User, Monitor, Tablet, Play, X as CloseIcon } from "lucide-react"
 import Image from "next/image"
 import { useEffect, useState } from "react"
 import emailjs from "@emailjs/browser"
 import Link from "next/link"
 import { useDeviceDetection } from "@/hooks/use-device-detection"
-import { getApkDownloadUrl, submitSalesForm, submitContactForm, handleApiError } from "@/utils/api"
+import { getApkDownloadUrl, submitSalesForm, submitContactForm, handleApiError, submitQueryWithoutCaptcha, API_BASE_URL, isDevelopment } from "@/utils/api"
 import { useAuth } from "@/hooks/use-auth"
 import { AuthModal } from "@/components/auth/auth-modal"
 import { UserProfile } from "@/components/auth/user-profile"
 import { useAuthGuard } from "@/hooks/use-auth-guard"
 import { AuthGuardModal } from "@/components/auth/auth-guard-modal"
+import { useToast } from "@/hooks/use-toast"
+import { Toaster } from "@/components/ui/toaster"
 import { usePremiumAuthGuard } from "@/hooks/use-premium-auth-guard"
 import { PremiumAuthModal } from "@/components/auth/premium-auth-modal"
 import { HCaptchaComponent } from "@/components/ui/hcaptcha"
@@ -77,6 +79,7 @@ const PlatformIcon = ({ platform, className }: { platform: string; className?: s
 export default function HomePage() {
   const device = useDeviceDetection()
   const { user, isAuthenticated } = useAuth()
+  const { toast } = useToast()
   const {
     navigateToProtectedRoute,
     showAuthModal,
@@ -118,6 +121,8 @@ export default function HomePage() {
   const [isOverLightSection, setIsOverLightSection] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [showContactModal, setShowContactModal] = useState(false)
+  const [showVideoModal, setShowVideoModal] = useState(false)
+  const [demoVideoUrl, setDemoVideoUrl] = useState<string | null>(null)
 
   const [showEnterpriseModal, setShowEnterpriseModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -183,13 +188,13 @@ export default function HomePage() {
       const pricingSection = document.getElementById("pricing")
       const contactSection = document.getElementById("contact")
 
-      if (pricingSection && contactSection) {
+      if (pricingSection) {
         const pricingTop = pricingSection.offsetTop - 100
         const pricingBottom = pricingTop + pricingSection.offsetHeight
-        const contactTop = contactSection.offsetTop - 100
 
-        // User is over light section only if in pricing area and not yet in contact area
-        setIsOverLightSection(scrollY >= pricingTop && scrollY < contactTop)
+        // Only treat the actual pricing block as a light section.
+        // Teams and Environmental Impact are dark and must not be considered light.
+        setIsOverLightSection(scrollY >= pricingTop && scrollY < pricingBottom)
       }
     }
 
@@ -201,6 +206,45 @@ export default function HomePage() {
   useEffect(() => {
     emailjs.init("YOUR_PUBLIC_KEY") // Replace with your EmailJS public key
   }, [])
+
+  // Fetch demo video from backend
+  const fetchDemoVideo = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/feature-videos`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      if (result.success && result.videos && result.videos.length > 0) {
+        // Find video marked as demo, fallback to first video if none marked
+        const demoVideo = result.videos.find((v: any) => v.isDemo) || result.videos[0]
+        setDemoVideoUrl(demoVideo.url)
+      }
+    } catch (error) {
+      console.error('Error fetching demo video:', error)
+      // Fallback to local video if backend fails
+      setDemoVideoUrl('/videos/demo.mp4')
+    }
+  }
+
+  // Load demo video on component mount
+  useEffect(() => {
+    fetchDemoVideo()
+  }, [])
+
+  const handleWatchDemo = () => {
+    if (demoVideoUrl) {
+      setShowVideoModal(true)
+    }
+  }
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -274,12 +318,6 @@ export default function HomePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Temporarily bypass captcha for testing
-    // if (!isCaptchaVerified || !captchaToken) {
-    //   setSubmitStatus("error")
-    //   return
-    // }
-
     setIsSubmitting(true)
     setSubmitStatus("idle")
 
@@ -290,14 +328,44 @@ export default function HomePage() {
         email: formData.email,
         company: formData.company,
         message: formData.message,
-        captchaToken: captchaToken || undefined // Convert null to undefined
+        captchaToken: captchaToken || undefined
       }
 
-      // Submit to API endpoint
-      const response = await submitContactForm(contactFormData)
+      console.log('🔍 DEBUG: Attempting contact form submission with data:', contactFormData)
+
+      let response
+      
+      // Use environment detection to determine submission method
+      if (isDevelopment) {
+        // Development: Use bypass for convenience
+        console.log('🔍 DEBUG: Development environment - using bypass API')
+        const bypassData = {
+          name: formData.name,
+          email: formData.email,
+          message: `Contact Form Inquiry from ${formData.name}\n\nContact Information:\n- Name: ${formData.name}\n- Email: ${formData.email}${formData.company ? `\n- Company: ${formData.company}` : ''}\n\nMessage:\n${formData.message}`,
+          to: "xscard@xspark.co.za",
+          type: "contact"
+        }
+        response = await submitQueryWithoutCaptcha(bypassData)
+      } else {
+        // Production: Use real captcha verification
+        console.log('🔍 DEBUG: Production environment - using real captcha verification')
+        response = await submitContactForm(contactFormData)
+      }
+      
+      console.log('🔍 DEBUG: API response:', response)
       
       if (response.success) {
+        console.log('🔍 DEBUG: Form submission successful!')
         setSubmitStatus("success")
+        
+        // Show success toast
+        toast({
+          title: "Message Sent Successfully!",
+          description: "Thank you for your message. We'll get back to you soon.",
+          variant: "default",
+        })
+        
         // Reset form after successful submission
         setTimeout(() => {
           setFormData({ name: "", email: "", company: "", message: "" })
@@ -307,13 +375,21 @@ export default function HomePage() {
           setCaptchaToken(null)
         }, 2000)
       } else {
+        console.log('🔍 DEBUG: Form submission failed:', response)
         throw new Error(response.message || "Submission failed")
       }
     } catch (error) {
-      console.error("Contact form submission error:", error)
+      console.error("🔍 DEBUG: Contact form submission error:", error)
       const errorMessage = handleApiError(error)
-      console.error("Error details:", errorMessage)
+      console.error("🔍 DEBUG: Error details:", errorMessage)
       setSubmitStatus("error")
+      
+      // Show error toast
+      toast({
+        title: "Failed to Send Message",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -440,6 +516,13 @@ export default function HomePage() {
       if (response.success) {
         setEnterpriseSubmitStatus("success")
         
+        // Show success toast
+        toast({
+          title: "Enterprise Inquiry Sent Successfully!",
+          description: "Thank you for your interest. Our team will contact you soon to discuss your requirements.",
+          variant: "default",
+        })
+        
         // Reset form after successful submission
         setTimeout(() => {
           setEnterpriseForm({
@@ -467,6 +550,13 @@ export default function HomePage() {
       const errorMessage = handleApiError(error)
       console.error("Error details:", errorMessage)
       setEnterpriseSubmitStatus("error")
+      
+      // Show error toast
+      toast({
+        title: "Failed to Send Enterprise Inquiry",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
       setIsEnterpriseSubmitting(false)
     }
@@ -509,7 +599,7 @@ export default function HomePage() {
     if (device.isMobile) {
       if (device.isApple) {
         return {
-          text: "Available soon on iOS",
+          text: "Available on iOS",
           icon: (
             <PlatformIcon platform="ios" className="h-5 w-5 text-white/40" />
           ),
@@ -536,7 +626,7 @@ export default function HomePage() {
     } else if (device.isTablet) {
       if (device.isApple) {
         return {
-          text: "Available soon on iOS",
+          text: "Available on iOS",
           icon: (
             <PlatformIcon platform="ios" className="h-4 w-4 text-white/40" />
           ),
@@ -557,7 +647,7 @@ export default function HomePage() {
       // Desktop
       if (device.isApple) {
         return {
-          text: "Available soon on macOS",
+          text: "Available on macOS",
           icon: (
             <PlatformIcon platform="ios" className="h-4 w-4 text-white/40" />
           ),
@@ -648,11 +738,23 @@ export default function HomePage() {
                 isOverLightSection
                   ? "text-gray-700 hover:text-purple-600"
                   : isScrolled
-                    ? "text-white/90 hover:text-purple-600"
+                    ? "text-white/90 hover:text-white"
                     : "text-gray-700 hover:text-purple-600"
               }`}
             >
               Pricing
+            </button>
+            <button
+              onClick={() => scrollToSection("teams")}
+              className={`transition-colors font-medium cursor-pointer ${
+                isOverLightSection
+                  ? "text-gray-700 hover:text-purple-600"
+                  : isScrolled
+                    ? "text-white/90 hover:text-white"
+                    : "text-gray-700 hover:text-purple-600"
+              }`}
+            >
+              Teams
             </button>
             <button
               onClick={() => scrollToSection("environmental-impact")}
@@ -660,11 +762,11 @@ export default function HomePage() {
                 isOverLightSection
                   ? "text-gray-700 hover:text-green-600"
                   : isScrolled
-                    ? "text-white/90 hover:text-green-400"
+                    ? "text-white/90 hover:text-white"
                     : "text-gray-700 hover:text-green-600"
               }`}
             >
-              Carbon Savings
+              Impact
             </button>
             <button
               onClick={openContactModal}
@@ -678,7 +780,6 @@ export default function HomePage() {
             >
               Contact
             </button>
-            {isAuthenticated && <UserProfile isOverLightSection={isOverLightSection} isScrolled={isScrolled} />}
             <Button
               className="bg-custom-btn-gradient hover:opacity-90 text-white border-0 px-4 sm:px-6 xl:px-8 text-sm sm:text-base transition-opacity"
               onClick={openModal}
@@ -716,6 +817,13 @@ export default function HomePage() {
           </div>
         </div>
       </nav>
+
+      {/* Floating User Profile - Aligned with navbar */}
+      {isAuthenticated && (
+        <div className="fixed top-6 z-[60] right-8 md:left-[calc(50%+400px+16px)]">
+          <UserProfile isOverLightSection={isOverLightSection} isScrolled={isScrolled} />
+        </div>
+      )}
 
       {/* Mobile Menu */}
       <>
@@ -759,12 +867,21 @@ export default function HomePage() {
               </button>
               <button
                 onClick={() => {
+                  scrollToSection("teams")
+                  setShowMobileMenu(false)
+                }}
+                className="block w-full text-left px-4 py-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
+              >
+                Teams
+              </button>
+              <button
+                onClick={() => {
                   scrollToSection("environmental-impact")
                   setShowMobileMenu(false)
                 }}
                 className="block w-full text-left px-4 py-2 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
               >
-                Carbon Savings
+                Impact
               </button>
               <button
                 onClick={() => {
@@ -850,12 +967,23 @@ export default function HomePage() {
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 animate-fade-in-up animation-delay-200">
               Why Choose XS Card?
             </h2>
-            <p className="text-xl text-white/80 max-w-3xl mx-auto animate-fade-in-up animation-delay-400">
+            <p className="text-xl text-white/80 max-w-3xl mx-auto animate-fade-in-up animation-delay-400 mb-8">
               Experience the next generation of professional networking with our cutting-edge features
             </p>
+            
+            {/* Watch Demo Button */}
+            <div className="flex justify-center animate-fade-in-up animation-delay-600 mb-12">
+              <Button
+                onClick={handleWatchDemo}
+                className="bg-custom-btn-gradient hover:opacity-90 text-white px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold shadow-2xl transition-opacity"
+              >
+                Watch Demo
+                <Play className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
+            </div>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 animate-fade-in-scale animation-delay-600">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 animate-fade-in-scale animation-delay-800">
             {[
               {
                 icon: <Smartphone className="h-8 w-8" />,
@@ -899,6 +1027,16 @@ export default function HomePage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+
+          {/* Feature Library Button */}
+          <div className="flex justify-center mt-12 animate-fade-in-up animation-delay-1000">
+            <Link href="/feature-library">
+              <Button className="bg-custom-btn-gradient hover:opacity-90 text-white px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold shadow-2xl transition-opacity">
+                Feature Library
+                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -1101,6 +1239,171 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Teams and Departments Section */}
+      <section id="teams" className="px-6 py-20 relative">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 animate-fade-in-up animation-delay-200">
+              XS Card for Teams and Departments
+            </h2>
+            <p className="text-xl text-white/80 max-w-3xl mx-auto animate-fade-in-up animation-delay-400">
+              Connect. Track. Grow.
+            </p>
+            <p className="text-lg text-white/70 max-w-4xl mx-auto mt-6 animate-fade-in-up animation-delay-600">
+              XS Card is a digital business card and real-time CRM designed to help teams connect smarter, manage relationships efficiently, and measure engagement effortlessly.
+            </p>
+            <p className="text-base text-white/60 max-w-4xl mx-auto mt-4 animate-fade-in-up animation-delay-800">
+              From marketing and sales to communications, HR, and operations, XS Card brings visibility, consistency, and control to every professional interaction — all through a single, intuitive dashboard.
+            </p>
+          </div>
+
+          {/* How Teams Use XS Card */}
+          <div className="mb-16">
+            <h3 className="text-3xl font-bold text-white mb-8 text-center">How Teams Use XS Card</h3>
+            <div className="grid md:grid-cols-2 gap-8">
+              <Card className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group">
+                <CardContent className="p-8">
+                  <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
+                    <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-xl font-semibold text-white mb-3">Event & Campaign Tracking</h4>
+                  <p className="text-white/70 leading-relaxed">
+                    Capture every connection. Each shared XS Card automatically logs data such as number of shares, engagement levels, and locations — giving your team real-time insights into performance and campaign reach.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group">
+                <CardContent className="p-8">
+                  <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
+                    <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-xl font-semibold text-white mb-3">Lead and Contact Management</h4>
+                  <p className="text-white/70 leading-relaxed">
+                    Never lose a lead again. Track, manage, and follow up on every connection instantly. Identify your most engaged prospects and integrate seamlessly with existing CRM or communication tools.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group">
+                <CardContent className="p-8">
+                  <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
+                    <Shield className="h-8 w-8" />
+                  </div>
+                  <h4 className="text-xl font-semibold text-white mb-3">Centralised Brand and Profile Control</h4>
+                  <p className="text-white/70 leading-relaxed">
+                    Keep your organisation consistent and professional. Update contact details, logos and web links across all employee cards instantly from the dashboard.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group">
+                <CardContent className="p-8">
+                  <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
+                    <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-xl font-semibold text-white mb-3">Cross-Departmental Insights</h4>
+                  <p className="text-white/70 leading-relaxed">
+                    Get a big-picture view of engagement across your company. Compare performance between teams, divisions, or regions to make smarter marketing and operational decisions.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Designed for Every Department */}
+          <div className="mb-16">
+            <h3 className="text-3xl font-bold text-white mb-8 text-center">Designed for Every Department</h3>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group">
+                <CardContent className="p-6 text-center">
+                  <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
+                    <svg className="h-8 w-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-lg font-semibold text-white mb-2">Marketing</h4>
+                  <p className="text-white/70 text-sm leading-relaxed">
+                    Measure brand visibility and engagement across events, campaigns, and activations. XS Card turns every interaction into actionable marketing data.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group">
+                <CardContent className="p-6 text-center">
+                  <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
+                    <svg className="h-8 w-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  </div>
+                  <h4 className="text-lg font-semibold text-white mb-2">Sales</h4>
+                  <p className="text-white/70 text-sm leading-relaxed">
+                    Empower your sales team with instant lead capture, real-time insights, and automated CRM integration — helping them focus on closing deals, not collecting business cards.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group">
+                <CardContent className="p-6 text-center">
+                  <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
+                    <svg className="h-8 w-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-lg font-semibold text-white mb-2">Human Resources</h4>
+                  <p className="text-white/70 text-sm leading-relaxed">
+                    Equip new hires with digital business cards instantly and maintain consistent contact details, roles, and branding across your organisation.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group">
+                <CardContent className="p-6 text-center">
+                  <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
+                    <svg className="h-8 w-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-lg font-semibold text-white mb-2">Operations & Corporate Services</h4>
+                  <p className="text-white/70 text-sm leading-relaxed">
+                    Gain oversight of engagement activity across departments. XS Card simplifies data collection and reporting, helping you align teams around performance and communication goals.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Why XS Card Works */}
+          <div className="text-center">
+            <Card className="bg-white/5 backdrop-blur-lg border-white/10 p-8 max-w-4xl mx-auto">
+              <CardContent className="p-0">
+                <h3 className="text-2xl font-bold text-white mb-4">Why XS Card Works</h3>
+                <p className="text-lg text-white/80 leading-relaxed">
+                  XS Card bridges the gap between people and performance — giving organisations the power to track, analyse, and enhance every professional interaction, while maintaining a unified brand identity across teams and departments.
+                </p>
+                <div className="mt-8">
+                  <Button
+                    size="lg"
+                    className="bg-custom-btn-gradient hover:opacity-90 text-white px-4 sm:px-6 md:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-opacity w-full sm:w-auto"
+                    onClick={openEnterpriseModal}
+                  >
+                    Get Started for Your Team
+                    <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
       {/* Environmental Impact Demo Section */}
       <EnvironmentalImpactDemo />
 
@@ -1272,21 +1575,32 @@ export default function HomePage() {
                   </div>
                 </button>
                 
-                {/* App Store - Coming Soon */}
-                <button 
-                  disabled
-                  className="bg-white/10 border border-white/20 backdrop-blur-sm rounded-lg p-4 transition-all duration-300 group shadow-lg opacity-50 cursor-not-allowed"
+                {/* App Store - Primary Option */}
+                <a 
+                  href="https://apps.apple.com/us/app/xs-card/id6742452317?uo=4"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="transition-all duration-300 group shadow-lg rounded-lg p-4 border relative backdrop-blur-sm bg-white/30 border-white/60 ring-2 ring-purple-400/50 hover:bg-white/40"
                 >
+                  {device.isApple && (
+                    <div className="absolute -top-2 -right-2 bg-custom-btn-gradient text-white text-xs px-2 py-1 rounded-full font-medium">
+                      Recommended
+                    </div>
+                  )}
                   <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gray-500 rounded-lg flex items-center justify-center shadow-md">
+                    <div className="w-8 h-8 bg-custom-btn-gradient rounded-lg flex items-center justify-center shadow-md">
                       <PlatformIcon platform="ios" className="w-4 h-4 text-white" />
                     </div>
                     <div className="text-left">
-                      <div className={`${isOverLightSection ? 'text-white' : 'text-gray-700'} font-semibold text-sm drop-shadow-sm`}>App Store</div>
-                      <div className={`${isOverLightSection ? 'text-white/70' : 'text-gray-700'} text-xs font-medium drop-shadow-sm`}>Coming Soon</div>
+                      <div className={`${isOverLightSection ? 'text-white' : 'text-gray-700'} font-semibold text-sm drop-shadow-sm`}>
+                        App Store
+                      </div>
+                      <div className={`${isOverLightSection ? 'text-white/70' : 'text-gray-700'} text-xs font-medium drop-shadow-sm`}>
+                        iOS App
+                      </div>
                     </div>
                   </div>
-                </button>
+                </a>
               </div>
               
               {/* Alternative Download Option for Huawei Devices */}
@@ -1850,6 +2164,64 @@ export default function HomePage() {
         handleCardSubmit={handlePremiumCardSubmit}
         isOverLightSection={isOverLightSection}
       />
+
+      {/* Video Demo Modal */}
+      {showVideoModal && (
+        <div 
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          onClick={() => setShowVideoModal(false)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-300 ease-out" />
+          
+          {/* Modal Content */}
+          <div 
+            className="relative bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl max-w-5xl w-full animate-fade-in-scale overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              animation: 'fadeInScale 0.3s ease-out'
+            }}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowVideoModal(false)}
+              className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200 hover:scale-110"
+              aria-label="Close video"
+            >
+              <CloseIcon className="w-6 h-6" />
+            </button>
+
+            {/* Video Player */}
+            <div className="relative aspect-video bg-black">
+              <video
+                className="w-full h-full"
+                controls
+                autoPlay
+                playsInline
+                muted
+                src={demoVideoUrl || '/videos/demo.mp4'}
+                onError={(e) => {
+                  console.error('Video error:', e);
+                  console.error('Video src:', e.currentTarget.src);
+                }}
+                onLoadStart={() => console.log('Video loading started')}
+                onCanPlay={() => console.log('Video can play')}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+
+            {/* Optional: Video Title */}
+            <div className="p-6 bg-white/5">
+              <h3 className="text-2xl font-bold text-white mb-2">XS Card Demo</h3>
+              <p className="text-white/70">See how XS Card transforms digital networking</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Toast notifications */}
+      <Toaster />
     </div>
   )
 }
