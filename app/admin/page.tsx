@@ -2325,7 +2325,7 @@ export default function AdminDashboard() {
                 className="h-8 w-auto" 
               />
           </div>
-                      <p className="text-white/60">&copy; 2024 XS Card Admin Dashboard. All rights reserved.</p>
+                      <p className="text-white/60">&copy; 2024 X Spark Admin Dashboard. All rights reserved.</p>
           <p className="text-white/60 mt-2">
             Developed by{" "}
             <a 
