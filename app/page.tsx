@@ -78,7 +78,7 @@ const PlatformIcon = ({ platform, className }: { platform: string; className?: s
 
 export default function HomePage() {
   const device = useDeviceDetection()
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, signOut, resetPassword } = useAuth()
   const { toast } = useToast()
   const {
     navigateToProtectedRoute,
@@ -130,6 +130,12 @@ export default function HomePage() {
   const [isCaptchaVerified, setIsCaptchaVerified] = useState(false)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
+  
+  // Reset password state
+  const [showResetDialog, setShowResetDialog] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetError, setResetError] = useState<string | null>(null)
+  const [resetLoading, setResetLoading] = useState(false)
   
   // Download captcha state
   const [isDownloadCaptchaVerified, setIsDownloadCaptchaVerified] = useState(false)
@@ -568,6 +574,28 @@ export default function HomePage() {
     setEnterpriseFormErrors({})
   }
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setResetLoading(true)
+    setResetError(null)
+
+    const result = await resetPassword(resetEmail)
+    
+    if (result.success) {
+      toast({
+        title: "Password reset email sent",
+        description: "Check your email for password reset instructions.",
+        variant: "default",
+      })
+      setShowResetDialog(false)
+      setResetEmail('')
+    } else {
+      setResetError(result.error?.userFriendlyMessage || 'Failed to send reset email')
+    }
+    
+    setResetLoading(false)
+  }
+
   const closeEnterpriseModal = () => {
     setShowEnterpriseModal(false)
     setEnterpriseSubmitStatus("idle")
@@ -818,9 +846,9 @@ export default function HomePage() {
         </div>
       </nav>
 
-      {/* Floating User Profile - Aligned with navbar */}
+      {/* Floating User Profile - Aligned with navbar (Desktop only) */}
       {isAuthenticated && (
-        <div className="fixed top-6 z-[60] right-8 md:left-[calc(50%+400px+16px)]">
+        <div className="hidden md:block fixed top-6 z-[60] md:right-8 lg:right-auto lg:left-[calc(50%+400px+16px)]">
           <UserProfile isOverLightSection={isOverLightSection} isScrolled={isScrolled} />
         </div>
       )}
@@ -846,6 +874,59 @@ export default function HomePage() {
           }`}
         >
           <div className="bg-white/95 backdrop-blur-lg rounded-lg shadow-lg border border-white/20 p-4">
+            {/* User Profile Section (Mobile) */}
+            {isAuthenticated && (
+              <div className="mb-4 pb-4 border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {user?.displayName || user?.email?.split('@')[0] || 'User'}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {user?.email}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 space-y-2">
+                  <button
+                    onClick={() => {
+                      setShowResetDialog(true)
+                      setResetEmail(user?.email || '')
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
+                  >
+                    Reset Password
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await signOut()
+                        setShowMobileMenu(false)
+                        toast({
+                          title: "Signed Out Successfully",
+                          description: "You have been signed out.",
+                          variant: "default",
+                        })
+                      } catch (error) {
+                        console.error('Sign out error:', error)
+                        toast({
+                          title: "Sign Out Failed",
+                          description: "There was an error signing out. Please try again.",
+                          variant: "destructive",
+                        })
+                      }
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
+            
             <div className="space-y-3">
               <button
                 onClick={() => {
@@ -892,11 +973,6 @@ export default function HomePage() {
               >
                 Contact
               </button>
-              {isAuthenticated && (
-                <div className="pt-2 border-t border-gray-200">
-                  <UserProfile isOverLightSection={isOverLightSection} isScrolled={isScrolled} />
-                </div>
-              )}
               <Button
                 className="w-full bg-custom-btn-gradient hover:opacity-90 text-white transition-opacity"
                 onClick={() => {
@@ -1501,7 +1577,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-white/10 text-center text-white/60">
-            <p>&copy; 2024 XS Card. All rights reserved.</p>
+            <p>&copy; 2024 X Spark. All rights reserved.</p>
             <p className="mt-2">
               Developed by{" "}
               <a 
@@ -2125,7 +2201,85 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* Reset Password Dialog */}
+      {showResetDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className={`absolute inset-0 backdrop-blur-sm animate-fade-in-scale safari-blur ${
+              isOverLightSection ? "bg-black/70" : "bg-black/50"
+            }`}
+            onClick={() => setShowResetDialog(false)}
+          ></div>
 
+          {/* Modal Content */}
+          <div
+            className={`relative ${getModalBackgroundClass()} rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto modal-scroll animate-fade-in-scale animation-delay-200`}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowResetDialog(false)}
+              className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors text-xl"
+            >
+              ✕
+            </button>
+
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="flex items-center justify-center mb-3">
+                <Image 
+                  src="/favicon.png" 
+                  alt="XS Card Logo" 
+                  width={32} 
+                  height={32} 
+                  className="mr-2 rounded-lg"
+                />
+                <h3 className="text-2xl font-bold text-white">Reset Password</h3>
+              </div>
+              <p className="text-white/80">Enter your email to receive password reset instructions</p>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="reset-email" className="text-white text-sm font-medium">
+                  Email Address
+                </label>
+                <input
+                  id="reset-email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+              
+              {resetError && (
+                <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+                  <p className="text-red-400 text-sm">{resetError}</p>
+                </div>
+              )}
+              
+              <button
+                type="submit"
+                disabled={resetLoading}
+                className="w-full bg-custom-btn-gradient hover:opacity-90 text-white transition-opacity py-3 px-4 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {resetLoading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Sending...
+                  </div>
+                ) : (
+                  'Send Reset Email'
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Auth Guard Modal */}
       <AuthGuardModal
