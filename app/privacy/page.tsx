@@ -890,7 +890,7 @@ export default function PrivacyPolicy() {
               </div>
             </div>
             <div className="mt-8 pt-8 border-t border-white/10 text-center text-white/60">
-              <p>&copy; 2024 XS Card. All rights reserved.</p>
+              <p>&copy; 2024 X Spark. All rights reserved.</p>
               <p className="mt-2">
                 Developed by{" "}
                 <a 
