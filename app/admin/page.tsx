@@ -14,7 +14,6 @@ import {
   Reply,
   Download,
   Settings,
-  Smartphone,
   Shield,
   Menu,
   X,
@@ -22,13 +21,14 @@ import {
   Trash2,
   Edit3,
   Star,
+  Users,
 } from "lucide-react"
 import Image from "next/image"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { UserProfile } from "@/components/auth/user-profile"
 import { auth } from "@/lib/firebase"
-import { API_BASE_URL } from "@/utils/api"
+import { API_BASE_URL, API_ENDPOINTS } from "@/utils/api"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 
@@ -60,9 +60,34 @@ interface CustomerRequest {
   }>;
 }
 
+interface FirestoreTimestamp {
+  _seconds: number
+  _nanoseconds: number
+}
+
+interface AdminUser {
+  id: string
+  uid?: string | null
+  firstName: string
+  lastName: string
+  email?: string | null
+  plan: string
+  status: "active" | "inactive" | "pending"
+  createdAt?: string | FirestoreTimestamp
+}
+
+interface UserContact {
+  id: string
+  name: string
+  email: string
+  phone: string
+  company?: string
+  createdAt?: string | FirestoreTimestamp
+}
+
 export default function AdminDashboard() {
   const { toast } = useToast()
-  const [activeTab, setActiveTab] = useState<"requests" | "uploads" | "video-upload">("requests")
+  const [activeTab, setActiveTab] = useState<"requests" | "users" | "video-upload">("requests")
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [requests, setRequests] = useState<CustomerRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -71,9 +96,6 @@ export default function AdminDashboard() {
   const [responseText, setResponseText] = useState("")
   const [showMessageTrail, setShowMessageTrail] = useState<CustomerRequest | null>(null)
   const [isResponding, setIsResponding] = useState(false)
-  const [uploadFile, setUploadFile] = useState<File | null>(null)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [isUploading, setIsUploading] = useState(false)
   const [videoUploadFile, setVideoUploadFile] = useState<File | null>(null)
   const [videoUploadProgress, setVideoUploadProgress] = useState(0)
   const [isVideoUploading, setIsVideoUploading] = useState(false)
@@ -111,6 +133,68 @@ export default function AdminDashboard() {
     opacity: '0'
   })
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set())
+  const [users, setUsers] = useState<AdminUser[]>([])
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true)
+  const [usersError, setUsersError] = useState<string | null>(null)
+  const [userPage, setUserPage] = useState(1)
+  const usersPerPage = 20
+  const isDemoUsers = usersError?.toLowerCase().includes('demo data') ?? false
+const [contactsUser, setContactsUser] = useState<AdminUser | null>(null)
+const [userContacts, setUserContacts] = useState<UserContact[]>([])
+const [isContactsLoading, setIsContactsLoading] = useState(false)
+const [contactsError, setContactsError] = useState<string | null>(null)
+  const [userSearchTerm, setUserSearchTerm] = useState('')
+
+  function formatPlanLabel(plan?: string | null): string {
+    if (!plan) return "Unknown"
+    const cleaned = String(plan).replace(/_/g, " ").trim()
+    if (!cleaned) return "Unknown"
+    return cleaned
+      .toLowerCase()
+      .split(" ")
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
+  }
+
+  function normaliseStatus(
+    rawStatus: unknown,
+    activeFlag?: boolean | null
+  ): AdminUser["status"] {
+    if (typeof rawStatus === "string") {
+      const statusLower = rawStatus.toLowerCase()
+      if (statusLower === "active") return "active"
+      if (statusLower === "inactive" || statusLower === "disabled") return "inactive"
+      if (statusLower === "pending") return "pending"
+    }
+    if (typeof rawStatus === "boolean") {
+      return rawStatus ? "active" : "inactive"
+    }
+    if (typeof activeFlag === "boolean") {
+      return activeFlag ? "active" : "inactive"
+    }
+    return "pending"
+  }
+
+  function parseFirestoreDate(value?: string | FirestoreTimestamp): Date | null {
+    if (!value) return null
+    if (typeof value === "string") {
+      const parsed = new Date(value)
+      return Number.isNaN(parsed.getTime()) ? null : parsed
+    }
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      typeof value._seconds === "number" &&
+      typeof value._nanoseconds === "number"
+    ) {
+      const milliseconds =
+        value._seconds * 1000 + Math.floor(value._nanoseconds / 1_000_000)
+      const parsed = new Date(milliseconds)
+      return Number.isNaN(parsed.getTime()) ? null : parsed
+    }
+    return null
+  }
   
   // Authentication and domain restriction check
   useEffect(() => {
@@ -199,6 +283,13 @@ export default function AdminDashboard() {
       date: "2024-01-13",
       status: "pending"
     }
+  ]
+
+  const mockUsers: AdminUser[] = [
+    { id: "1", uid: "1", firstName: "Lerato", lastName: "Mokoena", email: "lerato@example.com", plan: formatPlanLabel("Premium"), status: "active", createdAt: "2023-01-15T09:30:00Z" },
+    { id: "2", uid: "2", firstName: "Michael", lastName: "Naidoo", email: "michael@example.com", plan: formatPlanLabel("Free"), status: "inactive", createdAt: "2022-11-03T12:00:00Z" },
+    { id: "3", uid: "3", firstName: "Thandi", lastName: "Petersen", email: "thandi@example.com", plan: formatPlanLabel("Business"), status: "active", createdAt: "2024-02-20T07:15:00Z" },
+    { id: "4", uid: "4", firstName: "Kabelo", lastName: "Dlamini", email: "kabelo@example.com", plan: formatPlanLabel("Premium"), status: "pending", createdAt: "2023-06-01T16:45:00Z" },
   ]
 
   // Fetch requests from API
@@ -307,6 +398,205 @@ export default function AdminDashboard() {
     fetchRequests()
   }, [filters])
   
+  const fetchUsers = async () => {
+    if (accessDenied) {
+      setUsers([])
+      setIsLoadingUsers(false)
+      return
+    }
+
+    setIsLoadingUsers(true)
+    setUsersError(null)
+
+    try {
+      const currentUser = auth.currentUser
+      if (!currentUser) {
+        setUsersError('User not authenticated')
+        setIsLoadingUsers(false)
+        return
+      }
+
+      const idToken = await currentUser.getIdToken()
+
+      const endpoint = `${API_BASE_URL}${API_ENDPOINTS.USERS}`
+
+      console.log('🔍 Fetching users from:', endpoint)
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        },
+        mode: 'cors'
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      const rawUsers = Array.isArray(result)
+        ? result
+        : Array.isArray(result.data)
+          ? result.data
+          : Array.isArray(result.users)
+            ? result.users
+            : []
+
+      const normalisedUsers: AdminUser[] = rawUsers.map((user: any, index: number) => {
+        const nameValue = typeof user.name === 'string' ? user.name.trim() : ''
+        const firstName = nameValue || 'Unknown'
+        const surnameValue = typeof user.surname === 'string' ? user.surname.trim() : ''
+        const plan = formatPlanLabel(user.plan ?? null)
+
+        let status: AdminUser['status'] = 'pending'
+        if (typeof user.status === 'string') {
+          status = normaliseStatus(user.status, undefined)
+        } else if (typeof user.active === 'boolean') {
+          status = normaliseStatus(undefined, user.active)
+        }
+
+        return {
+          id: String(user.id ?? user.uid ?? `user-${index}`),
+          uid: typeof user.uid === 'string' ? user.uid : String(user.id ?? `user-${index}`),
+          firstName,
+          lastName: surnameValue,
+          email: user.email ?? null,
+          plan,
+          status,
+          createdAt: user.createdAt,
+        }
+      })
+
+      setUsers(normalisedUsers.length > 0 ? normalisedUsers : [])
+    } catch (error) {
+      console.error('❌ Failed to fetch users:', error)
+      let message = 'Failed to load users'
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          message = 'Cannot connect to server. Please ensure the backend is running.'
+        } else if (error.message.includes('401')) {
+          message = 'Authentication failed. Please log in again.'
+        } else if (error.message.includes('403')) {
+          message = 'Access denied. You may not have admin privileges.'
+        } else {
+          message = error.message
+        }
+      }
+      setUsersError(message)
+      setUsers(mockUsers)
+    } finally {
+      setIsLoadingUsers(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchUsers()
+  }, [accessDenied])
+  
+  const filteredUsers = users.filter((user) => {
+    if (!userSearchTerm.trim()) return true
+
+    const term = userSearchTerm.trim().toLowerCase()
+    const valuesToSearch = [
+      user.firstName,
+      user.lastName,
+      user.email,
+      user.plan,
+      user.status,
+      formatUserDate(user.createdAt),
+    ]
+
+    return valuesToSearch.some((value) =>
+      typeof value === 'string' && value.toLowerCase().includes(term)
+    )
+  })
+
+  const totalUserPages = Math.max(1, Math.ceil(filteredUsers.length / usersPerPage))
+  const usersCurrentPage = Math.min(userPage, totalUserPages)
+  const paginatedUsers = filteredUsers.slice((usersCurrentPage - 1) * usersPerPage, usersCurrentPage * usersPerPage)
+
+  const openContactsModal = async (user: AdminUser) => {
+    setContactsUser(user)
+    setUserContacts([])
+    setContactsError(null)
+    setIsContactsLoading(true)
+
+    try {
+      const currentUser = auth.currentUser
+      if (!currentUser) {
+        throw new Error('User not authenticated')
+      }
+
+      const idToken = await currentUser.getIdToken()
+      const uid = user.uid ?? user.id
+      const endpoint = `${API_BASE_URL}${API_ENDPOINTS.GET_CONTACTS}/${encodeURIComponent(uid)}`
+
+      console.log('🔍 Fetching contacts for user:', uid, endpoint)
+
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json',
+        },
+        mode: 'cors',
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+
+      let contactsData: any[] = []
+      if (Array.isArray(result)) {
+        contactsData = result
+      } else if (Array.isArray(result?.data)) {
+        contactsData = result.data
+      } else if (Array.isArray(result?.contacts)) {
+        contactsData = result.contacts
+      } else if (Array.isArray(result?.contactList)) {
+        contactsData = result.contactList
+      }
+
+      const normalisedContacts: UserContact[] = contactsData.map((contact: any, index: number) => {
+        const firstName = typeof contact.name === 'string' ? contact.name.trim() : ''
+        const lastName = typeof contact.surname === 'string' ? contact.surname.trim() : ''
+        const name = [firstName, lastName].filter(Boolean).join(' ') || firstName || lastName
+
+        return {
+          id: String(contact.id ?? contact.uid ?? contact.email ?? `contact-${index}`),
+          name,
+          email: typeof contact.email === 'string' ? contact.email : '',
+          phone: typeof contact.phone === 'string'
+            ? contact.phone
+            : typeof contact.phoneNumber === 'string'
+              ? contact.phoneNumber
+              : '',
+          company: typeof contact.company === 'string' ? contact.company : undefined,
+          createdAt: contact.createdAt,
+        }
+      })
+
+      setUserContacts(normalisedContacts)
+    } catch (error) {
+      console.error('❌ Failed to fetch contacts:', error)
+      const message =
+        error instanceof Error ? error.message : 'Failed to load contacts'
+      setContactsError(message)
+    } finally {
+      setIsContactsLoading(false)
+    }
+  }
+
+  const closeContactsModal = () => {
+    setContactsUser(null)
+    setUserContacts([])
+    setContactsError(null)
+    setIsContactsLoading(false)
+  }
+  
   // Prevent scrolling when modal is open
   useEffect(() => {
     if (selectedRequest) {
@@ -359,90 +649,6 @@ export default function AdminDashboard() {
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [selectedRequest])
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file && file.name.endsWith(".apk")) {
-      setUploadFile(file)
-    }
-  }
-
-  const handleUpload = async () => {
-    if (!uploadFile) return
-    
-    // Don't upload if access is denied
-    if (accessDenied) {
-      return
-    }
-
-    setIsUploading(true)
-    setUploadProgress(0)
-    setError(null)
-
-    try {
-      const user = auth.currentUser
-      if (!user) {
-        setError('User not authenticated')
-        setIsUploading(false)
-        return
-      }
-
-      const idToken = await user.getIdToken()
-      
-      // Create FormData for file upload
-      const formData = new FormData()
-      formData.append('file', uploadFile)
-      
-      // Make API call to upload APK
-      console.log('🔍 Uploading APK to:', `${API_BASE_URL}/upload-apk`)
-      console.log('🔍 File size:', uploadFile.size, 'bytes')
-      console.log('🔍 File name:', uploadFile.name)
-      
-      const response = await fetch(`${API_BASE_URL}/upload-apk`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-          // Don't set Content-Type for FormData, let browser set it with boundary
-        },
-        body: formData,
-        mode: 'cors' // Explicitly set CORS mode
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
-      }
-
-      const result = await response.json()
-      
-      if (result.success) {
-        // Upload successful
-        setUploadProgress(100)
-        setUploadFile(null)
-        
-        // Show success toast
-        toast({
-          title: "APK Uploaded Successfully!",
-          description: "Your app has been deployed successfully.",
-          variant: "default",
-        })
-      } else {
-        throw new Error(result.message || 'Failed to upload APK')
-      }
-    } catch (error) {
-      console.error('Error uploading APK:', error)
-      setError(error instanceof Error ? error.message : 'Failed to upload APK')
-      
-      // Show error toast
-      toast({
-        title: "Upload Failed",
-        description: error instanceof Error ? error.message : 'Failed to upload APK',
-        variant: "destructive",
-      })
-    } finally {
-      setIsUploading(false)
-    }
-  }
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -980,6 +1186,91 @@ export default function AdminDashboard() {
     }
   }
 
+  function formatUserDate(value?: string | FirestoreTimestamp): string | null {
+    if (!value) return null
+
+    if (typeof value === 'string') {
+      const parsedDate = parseFirestoreDate(value)
+      if (parsedDate) {
+        const day = String(parsedDate.getDate()).padStart(2, '0')
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        const month = monthNames[parsedDate.getMonth()]
+        const year = parsedDate.getFullYear()
+        return `${day}/${month}/${year}`
+      }
+      const fallback = new Date(value)
+      if (!Number.isNaN(fallback.getTime())) {
+        const day = String(fallback.getDate()).padStart(2, '0')
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        const month = monthNames[fallback.getMonth()]
+        const year = fallback.getFullYear()
+        return `${day}/${month}/${year}`
+      }
+
+      // Attempt manual parsing for strings like "September 12 2025 at 10:36:25 AM UTC"
+      const monthLookup: Record<string, number> = {
+        january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
+        july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
+      }
+      const match = value
+        .replace(/,/g, '')
+        .match(/([A-Za-z]+)\s+(\d{1,2})\s+(\d{4})/)
+
+      if (match) {
+        const [, monthNameRaw, dayRaw, yearRaw] = match
+        const monthIndex = monthLookup[monthNameRaw.toLowerCase()]
+        const dayNum = Number(dayRaw)
+        const yearNum = Number(yearRaw)
+
+        if (monthIndex !== undefined && !Number.isNaN(dayNum) && !Number.isNaN(yearNum)) {
+          const normalisedDate = new Date(Date.UTC(yearNum, monthIndex, dayNum))
+          const day = String(normalisedDate.getUTCDate()).padStart(2, '0')
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+          const month = monthNames[monthIndex]
+          return `${day}/${month}/${yearNum}`
+        }
+      }
+
+      return value
+    }
+
+    const date = parseFirestoreDate(value)
+    if (!date) {
+      return null
+    }
+    const day = String(date.getDate()).padStart(2, '0')
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const month = monthNames[date.getMonth()]
+    const year = date.getFullYear()
+    return `${day}/${month}/${year}`
+  }
+
+  const getStatusClasses = (status: AdminUser['status']) => {
+    switch (status) {
+      case 'active':
+        return 'bg-green-500/20 text-green-300 border border-green-500/40'
+      case 'inactive':
+        return 'bg-red-500/20 text-red-300 border border-red-500/40'
+      default:
+        return 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40'
+    }
+  }
+
+  const getStatusLabel = (status: AdminUser['status']) => {
+    switch (status) {
+      case 'active':
+        return 'Active'
+      case 'inactive':
+        return 'Inactive'
+      default:
+        return 'Pending'
+    }
+  }
+
+  const handleViewUser = (user: AdminUser) => {
+    void openContactsModal(user)
+  }
+
   // Function to format the message content
   const formatMessage = (message: string) => {
     // Split the message by lines and format each section
@@ -1120,7 +1411,6 @@ export default function AdminDashboard() {
   const testBackendConnection = async () => {
     console.log('🔍 Testing backend connection...')
     
-    // Test health endpoint
     try {
       const healthResponse = await fetch(`${API_BASE_URL}/health`, {
         method: 'GET',
@@ -1129,37 +1419,67 @@ export default function AdminDashboard() {
         },
         mode: 'cors'
       })
-      
-      if (healthResponse.ok) {
-        console.log('✅ Health endpoint is reachable')
-        
-        // Test upload endpoint with OPTIONS request
+
+      const healthOk = healthResponse.ok
+      console.log(healthOk ? '✅ Health endpoint is reachable' : `⚠️ Health endpoint responded with status: ${healthResponse.status}`)
+
+      const currentUser = auth.currentUser
+      if (!currentUser) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in again to test admin endpoints.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const idToken = await currentUser.getIdToken()
+
+      const userEndpoints = [
+        `${API_BASE_URL}/api/admin/users`,
+        `${API_BASE_URL}/admin/users`,
+        `${API_BASE_URL}/api/users`,
+        `${API_BASE_URL}/users`
+      ]
+
+      let userEndpointSuccess: { endpoint: string; status: number } | null = null
+
+      for (const endpoint of userEndpoints) {
         try {
-          const optionsResponse = await fetch(`${API_BASE_URL}/upload-apk`, {
-            method: 'OPTIONS',
+          const response = await fetch(endpoint, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${idToken}`,
+              'Content-Type': 'application/json'
+            },
             mode: 'cors'
           })
-          
-          console.log('🔍 Upload endpoint OPTIONS response:', {
-            status: optionsResponse.status,
-            headers: Object.fromEntries(optionsResponse.headers.entries())
-          })
-          
-          toast({
-            title: "Backend Connection Successful",
-            description: "Both health and upload endpoints are accessible.",
-            variant: "default",
-          })
-        } catch (uploadError) {
-          console.log('⚠️ Upload endpoint test failed:', uploadError)
-          toast({
-            title: "Partial Backend Access",
-            description: "Health endpoint works but upload endpoint has issues.",
-            variant: "destructive",
-          })
+
+          if (response.ok) {
+            userEndpointSuccess = { endpoint, status: response.status }
+            console.log('✅ User endpoint reachable:', endpoint)
+            break
+          } else {
+            console.warn(`⚠️ User endpoint responded with status ${response.status}: ${endpoint}`)
+          }
+        } catch (userError) {
+          console.warn(`⚠️ User endpoint request failed for ${endpoint}:`, userError)
         }
+      }
+
+      if (healthOk && userEndpointSuccess) {
+        toast({
+          title: "Backend Connection Successful",
+          description: `Health endpoint and user endpoint (${userEndpointSuccess.endpoint}) are accessible.`,
+          variant: "default",
+        })
+      } else if (healthOk) {
+        toast({
+          title: "Partial Backend Access",
+          description: "Health endpoint is reachable, but user endpoint could not be contacted.",
+          variant: "destructive",
+        })
       } else {
-        console.log('⚠️ Health endpoint responded with status:', healthResponse.status)
         toast({
           title: "Backend Connection Warning",
           description: `Health endpoint responded with status: ${healthResponse.status}`,
@@ -1167,10 +1487,10 @@ export default function AdminDashboard() {
         })
       }
     } catch (error) {
-      console.log('❌ Backend connection failed:', error)
+      console.error('❌ Backend connection failed:', error)
       toast({
         title: "Backend Connection Failed",
-        description: "Cannot connect to backend server. This might be a CORS issue.",
+        description: error instanceof Error ? error.message : "Cannot connect to backend server.",
         variant: "destructive",
       })
     }
@@ -1318,8 +1638,8 @@ export default function AdminDashboard() {
               <div>
                 <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white">XS Card Admin Dashboard</h1>
               </div>
-            </div>
-            <p className="text-base sm:text-lg md:text-xl text-white/70 px-4">Manage customer requests and app deployments</p>
+          </div>
+          <p className="text-base sm:text-lg md:text-xl text-white/70 px-4">Manage customer requests, users, and media assets</p>
           </div>
 
           {/* Dashboard Card */}
@@ -1341,16 +1661,16 @@ export default function AdminDashboard() {
                   </div>
                 </button>
                 <button
-                  onClick={() => setActiveTab("uploads")}
+                  onClick={() => setActiveTab("users")}
                   className={`px-3 sm:px-6 md:px-8 py-3 sm:py-6 font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
-                    activeTab === "uploads"
+                    activeTab === "users"
                       ? "text-white border-b-2 border-purple-400 bg-white/10"
                       : "text-white/70 hover:text-white hover:bg-white/5"
                   }`}
                 >
                   <div className="flex items-center space-x-2 sm:space-x-3">
-                    <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="text-sm sm:text-base md:text-lg">App Deployment</span>
+                    <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="text-sm sm:text-base md:text-lg">User Directory</span>
                   </div>
                 </button>
                 <button
@@ -1855,84 +2175,215 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
-                {activeTab === "uploads" && (
+                {activeTab === "users" && (
                   <div className="space-y-6 sm:space-y-8">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-                      <h2 className="text-xl sm:text-2xl font-bold text-white">App Deployment</h2>
-                      <div className="text-white/60 text-sm">Upload new app versions</div>
+                      <h2 className="text-xl sm:text-2xl font-bold text-white">User Directory</h2>
+                      <div className="text-white/60 text-sm">
+                        {isLoadingUsers ? "Loading users..." : `${filteredUsers.length} users`}
+                      </div>
                     </div>
 
-                    <Card className="bg-white/10 backdrop-blur-sm border border-white/20">
-                      <CardContent className="p-4 sm:p-6">
-                        <div className="space-y-4">
-                          <div className="text-center">
-                            <div className="w-16 h-16 bg-custom-btn-gradient rounded-full flex items-center justify-center mx-auto mb-4">
-                              <Smartphone className="w-8 h-8 text-white" />
-                            </div>
-                            <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Upload Android APK</h3>
-                            <p className="text-white/70 text-sm">Select your APK file to deploy a new version</p>
-                          </div>
-
-                          <div className="border-2 border-dashed border-white/30 rounded-lg p-6 text-center">
-                            <input
-                              type="file"
-                              accept=".apk"
-                              onChange={handleFileUpload}
-                              className="hidden"
-                              id="apk-upload"
-                            />
-                            <label
-                              htmlFor="apk-upload"
-                              className="cursor-pointer block"
-                            >
-                              <Upload className="w-8 h-8 text-white/60 mx-auto mb-2" />
-                              <p className="text-white/80 text-sm">
-                                {uploadFile ? uploadFile.name : "Click to select APK file"}
-                              </p>
-                            </label>
-                          </div>
-
-                          {uploadFile && (
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-white/80">File: {uploadFile.name}</span>
-                                <span className="text-white/60">{(uploadFile.size / 1024 / 1024).toFixed(2)} MB</span>
-                                  </div>
-
-                              {uploadProgress > 0 && uploadProgress < 100 && (
-                                <div className="space-y-2">
-                                  <div className="flex justify-between text-sm">
-                                    <span className="text-white/80">Uploading...</span>
-                                    <span className="text-white/60">{uploadProgress}%</span>
-                                  </div>
-                                  <div className="w-full bg-white/20 rounded-full h-2">
-                                    <div
-                                      className="bg-custom-btn-gradient h-2 rounded-full transition-all duration-300"
-                                        style={{ width: `${uploadProgress}%` }}
-                                      ></div>
-                                    </div>
-                                  </div>
-                                )}
-
-                                <Button
-                                  onClick={handleUpload}
-                                  disabled={isUploading}
-                                  className="w-full bg-custom-btn-gradient hover:opacity-90 text-white"
-                                >
-                                  {isUploading ? (
-                                    <div className="flex items-center space-x-2">
-                                    <RefreshCw className="w-4 h-4 animate-spin" />
-                                    <span>Uploading...</span>
-                                    </div>
-                                  ) : (
-                                  "Deploy App"
-                                  )}
-                                </Button>
-                            </div>
-                          )}
+                    {usersError && (
+                      <div
+                        className={`rounded-lg p-4 sm:p-6 ${
+                          isDemoUsers
+                            ? "bg-yellow-500/10 border border-yellow-500/30"
+                            : "bg-red-500/10 border border-red-500/30"
+                        }`}
+                      >
+                        <p
+                          className={`text-sm mb-4 ${
+                            isDemoUsers ? "text-yellow-300" : "text-red-400"
+                          }`}
+                        >
+                          {usersError}
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+                          <Button
+                            onClick={fetchUsers}
+                            className="bg-custom-btn-gradient hover:opacity-90 text-white border-0"
+                            disabled={isLoadingUsers}
+                          >
+                            <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingUsers ? 'animate-spin' : ''}`} />
+                            Retry
+                          </Button>
+                          <Button
+                            onClick={testBackendConnection}
+                            className="bg-custom-btn-gradient hover:opacity-90 text-white border-0"
+                          >
+                            Test Connection
+                          </Button>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium text-white/70 mb-1">
+                            Search users
+                          </label>
+                          <input
+                            type="text"
+                            value={userSearchTerm}
+                            onChange={(e) => {
+                              setUserSearchTerm(e.target.value)
+                              setUserPage(1)
+                            }}
+                            placeholder="Search by name, surname, email, plan, status, joined…"
+                            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          />
+                        </div>
+                        {userSearchTerm && (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setUserSearchTerm('')
+                              setUserPage(1)
+                            }}
+                            className="self-start sm:self-auto bg-white/10 border-white/30 text-white hover:bg-white/20"
+                          >
+                            Clear
+                          </Button>
+                        )}
+                      </div>
+
+                      {isLoadingUsers && (
+                        <div className="space-y-3">
+                          {Array.from({ length: 4 }).map((_, index) => (
+                            <div
+                              key={index}
+                              className="animate-pulse bg-white/5 border border-white/10 rounded-lg h-16"
+                            ></div>
+                          ))}
+                        </div>
+                      )}
+
+                      {!isLoadingUsers && !usersError && filteredUsers.length === 0 && (
+                        <p className="text-white/70 text-center py-8">No users found.</p>
+                      )}
+
+                      {!isLoadingUsers && filteredUsers.length > 0 && (
+                        <Card className="bg-white/10 backdrop-blur-sm border border-white/20 overflow-hidden">
+                          <CardContent className="p-0">
+                            <div className="overflow-x-auto">
+                              <table className="min-w-full divide-y divide-white/10">
+                                <thead className="bg-white/5">
+                                  <tr>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/70">
+                                      Name
+                                    </th>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/70">
+                                      Surname
+                                    </th>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/70">
+                                      Email
+                                    </th>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/70">
+                                      Plan
+                                    </th>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/70">
+                                      Status
+                                    </th>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/70">
+                                      Joined
+                                    </th>
+                                    <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-white/70">
+                                      Actions
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/10">
+                                  {paginatedUsers.map((user) => {
+                                    const joinedLabel = formatUserDate(user.createdAt)
+                                    return (
+                                      <tr
+                                        key={user.id}
+                                        className="hover:bg-white/5 transition-colors"
+                                      >
+                                        <td className="px-4 py-3">
+                                          <span className="text-white text-sm font-medium">
+                                            {user.firstName || '—'}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-white/80 text-sm">
+                                          {user.lastName || '—'}
+                                        </td>
+                                        <td className="px-4 py-3 text-white/60 text-sm break-all">
+                                          {user.email ? (
+                                            <a
+                                              href={`mailto:${user.email}`}
+                                              className="text-purple-300 hover:text-purple-200 underline decoration-dotted break-all"
+                                            >
+                                              {user.email}
+                                            </a>
+                                          ) : (
+                                            '—'
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-3 text-white/70 text-sm">
+                                          {user.plan || 'Unknown'}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                          <span className={`px-2 py-1 rounded-full text-xs font-semibold inline-flex items-center ${getStatusClasses(user.status)}`}>
+                                            {getStatusLabel(user.status)}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-white/60">
+                                          {joinedLabel ?? "—"}
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                          <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => handleViewUser(user)}
+                                            className="h-8 w-8 bg-transparent border border-white/30 text-white hover:bg-white/10 hover:border-white/50"
+                                          >
+                                            <Eye className="h-4 w-4" />
+                                          </Button>
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-white/10 px-4 py-3 bg-white/5">
+                              <p className="text-xs text-white/60">
+                                Showing {(usersCurrentPage - 1) * usersPerPage + 1} to{" "}
+                                {Math.min(usersCurrentPage * usersPerPage, filteredUsers.length)} of {filteredUsers.length} users
+                                {isDemoUsers && " (demo data)"}
+                              </p>
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setUserPage((prev) => Math.max(1, prev - 1))}
+                                  disabled={usersCurrentPage === 1}
+                                  className="bg-transparent border border-white/30 text-white hover:bg-white/10 hover:border-white/50"
+                                >
+                                  Previous
+                                </Button>
+                                <span className="text-xs text-white/60">
+                                  Page {usersCurrentPage} of {totalUserPages}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setUserPage((prev) => Math.min(totalUserPages, prev + 1))}
+                                  disabled={usersCurrentPage === totalUserPages}
+                                  className="bg-transparent border border-white/30 text-white hover:bg-white/10 hover:border-white/50"
+                                >
+                                  Next
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -2312,6 +2763,121 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+  {/* User Contacts Modal */}
+  {contactsUser && (
+    <div className="fixed inset-0 z-[180] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={closeContactsModal}
+      />
+      <Card className="relative w-full max-w-4xl bg-slate-950/95 border border-white/15 shadow-2xl">
+        <CardContent className="p-6 space-y-5">
+          <div className="flex items-start justify-between space-x-4">
+            <div>
+              <h3 className="text-xl font-semibold text-white">
+                Contacts for {contactsUser.firstName} {contactsUser.lastName}
+              </h3>
+              {contactsUser.email && (
+                <p className="text-white/60 text-sm mt-1 break-all">
+                  {contactsUser.email}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={closeContactsModal}
+              className="text-white/60 hover:text-white transition-colors"
+              aria-label="Close contacts"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {isContactsLoading && (
+            <p className="text-white/70 text-sm">Loading contacts...</p>
+          )}
+
+          {!isContactsLoading && contactsError && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-sm text-red-300">
+              {contactsError}
+            </div>
+          )}
+
+          {!isContactsLoading && !contactsError && userContacts.length === 0 && (
+            <p className="text-white/60 text-sm">No contacts found for this user.</p>
+          )}
+
+          {!isContactsLoading && !contactsError && userContacts.length > 0 && (
+            <div className="border border-white/10 rounded-lg overflow-hidden">
+              <div className="max-h-[26rem] overflow-y-auto">
+                <table className="min-w-full divide-y divide-white/10">
+                  <thead className="bg-white/5">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/70">
+                        Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/70">
+                        Email
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/70">
+                        Phone
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/70">
+                        Company
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/70">
+                        Added
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/10">
+                    {userContacts.map((contact) => (
+                      <tr key={contact.id} className="hover:bg-white/5 transition-colors">
+                        <td className="px-4 py-3 text-sm text-white">
+                          {contact.name || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-white/70 break-all">
+                          {contact.email ? (
+                            <a
+                              href={`mailto:${contact.email}`}
+                              className="block max-w-[14rem] truncate text-purple-300 hover:text-purple-200 underline decoration-dotted"
+                              title={contact.email}
+                            >
+                              {contact.email}
+                            </a>
+                          ) : (
+                            <span>—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-white/70">
+                          {contact.phone || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-white/70">
+                          {contact.company || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-white/60">
+                          {formatUserDate(contact.createdAt) ?? '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <Button
+              onClick={closeContactsModal}
+              className="bg-custom-btn-gradient hover:opacity-90 text-white"
+            >
+              Close
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )}
 
       {/* Footer */}
       <footer className="px-6 py-8 border-t border-white/10">
