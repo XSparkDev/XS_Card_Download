@@ -12,6 +12,19 @@ import {
 } from '@/utils/environmentalImpact'
 
 export default function EnvironmentalImpactDemo() {
+  const maxEmployees = 100000
+  const maxCardsPerEmployee = 100
+
+  const updateEmployees = (value: number) => {
+    const clamped = Math.max(1, Math.min(maxEmployees, value))
+    setEmployees(clamped)
+  }
+
+  const updateCardsPerEmployee = (value: number) => {
+    const clamped = Math.max(1, Math.min(maxCardsPerEmployee, value))
+    setCardsPerEmployee(clamped)
+  }
+
   const [employees, setEmployees] = useState<number>(100)
   const [cardsPerEmployee, setCardsPerEmployee] = useState<number>(50)
   
@@ -38,38 +51,90 @@ export default function EnvironmentalImpactDemo() {
         </div>
         
         {/* Input Fields */}
-        <div className="max-w-md mx-auto mb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="max-w-3xl mx-auto mb-10">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-white/80 mb-2">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-white/80">
                 Employees
               </label>
-               <input
-                 type="text"
-                 value={employees}
-                 onChange={(e) => {
-                   const value = e.target.value.replace(/[^0-9]/g, '');
-                   setEmployees(parseInt(value) || 0);
-                 }}
-                 className="w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                 placeholder="100"
-               />
+              <span className="text-sm font-semibold text-white">
+                {employees >= maxEmployees ? `${maxEmployees.toLocaleString()}+` : employees.toLocaleString()}
+              </span>
             </div>
-            
+            <div className="flex items-center gap-3 mt-4">
+              <Button
+                variant="outline"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                onClick={() => updateEmployees(employees - 1)}
+                disabled={employees <= 1}
+              >
+                −
+              </Button>
+              <input
+                type="range"
+                min={1}
+                max={maxEmployees}
+                step={1}
+                value={employees}
+                onChange={(e) => updateEmployees(parseInt(e.target.value, 10))}
+                className="flex-1 accent-green-400"
+              />
+              <Button
+                variant="outline"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                onClick={() => updateEmployees(employees + 1)}
+                disabled={employees >= maxEmployees}
+              >
+                +
+              </Button>
+            </div>
+            <div className="flex justify-between text-xs text-white/60 mt-2">
+              <span>{'1'}</span>
+              <span>{`${maxEmployees.toLocaleString()}+`}</span>
+            </div>
+            </div>
+
             <div>
-              <label className="block text-sm font-medium text-white/80 mb-2">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-white/80">
                 Cards per Employee/Year
               </label>
-               <input
-                 type="text"
-                 value={cardsPerEmployee}
-                 onChange={(e) => {
-                   const value = e.target.value.replace(/[^0-9]/g, '');
-                   setCardsPerEmployee(parseInt(value) || 0);
-                 }}
-                 className="w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                 placeholder="50"
-               />
+              <span className="text-sm font-semibold text-white">
+                {cardsPerEmployee >= maxCardsPerEmployee ? `${maxCardsPerEmployee}+` : cardsPerEmployee}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 mt-4">
+              <Button
+                variant="outline"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                onClick={() => updateCardsPerEmployee(cardsPerEmployee - 1)}
+                disabled={cardsPerEmployee <= 1}
+              >
+                −
+              </Button>
+              <input
+                type="range"
+                min={1}
+                max={maxCardsPerEmployee}
+                step={1}
+                value={cardsPerEmployee}
+                onChange={(e) => updateCardsPerEmployee(parseInt(e.target.value, 10))}
+                className="flex-1 accent-purple-400"
+              />
+              <Button
+                variant="outline"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                onClick={() => updateCardsPerEmployee(cardsPerEmployee + 1)}
+                disabled={cardsPerEmployee >= maxCardsPerEmployee}
+              >
+                +
+              </Button>
+            </div>
+            <div className="flex justify-between text-xs text-white/60 mt-2">
+              <span>{'1'}</span>
+              <span>{`${maxCardsPerEmployee}+`}</span>
+            </div>
             </div>
           </div>
         </div>
