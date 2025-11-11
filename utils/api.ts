@@ -126,6 +126,8 @@ export const API_ENDPOINTS = {
   USER_PROFILE: '/user/profile',
   BUSINESS_CARDS: '/business-cards',
   ANALYTICS: '/analytics',
+  USERS: '/users',
+  GET_CONTACTS: '/Contacts',
 } as const;
 
 // Request configuration
