@@ -684,7 +684,7 @@ export default function HomePage() {
         }
       } else if (device.isWindows) {
         return {
-          text: "Available on Windows!",
+          text: "Available on any browser, coming soon to Windows!",
           icon: (
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M0 3.545L9.818 2.182v9.818H0V3.545zM10.909 2.182L24 0v11.727H10.909V2.182zM0 12.727h9.818V24L0 22.364V12.727zM10.909 12.727H24V24L10.909 22.364V12.727z"/>
@@ -992,7 +992,7 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 blur-3xl"></div>
         <div className="max-w-7xl mx-auto text-center relative z-10 px-2 sm:px-0">
           <Badge className="mb-6 bg-white/10 text-white border-white/20 hover:bg-white/20 animate-fade-in-up">
-            ✨ The Future of Business Cards
+            ✨ The Future Business Card, Today
           </Badge>
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight animate-fade-in-up animation-delay-200">
             Your Digital
