@@ -1002,8 +1002,7 @@ export default function HomePage() {
             </span>
           </h1>
           <p className="text-lg sm:text-xl text-white/80 mb-8 max-w-3xl mx-auto leading-relaxed animate-fade-in-up animation-delay-400 px-4">
-            Create stunning, interactive digital business cards that make lasting impressions. Share your professional
-            identity instantly with QR codes, NFC, and smart links.
+            A digital business card and networking dashboard designed to help professionals build meaningful connections, remember every interaction, and never lose track of a contact again.
           </p>
           <div className="flex justify-center items-center animate-fade-in-up animation-delay-600">
             <Button
@@ -1019,10 +1018,33 @@ export default function HomePage() {
             {isClient ? (
               (() => {
                 const platformInfo = getPlatformInfo()
+                const getStoreUrl = (text: string) => {
+                  if (text === "Available on Android") {
+                    return "https://play.google.com/store/apps/details?id=com.p.zzles.xscard"
+                  } else if (text === "Available on iOS") {
+                    return "https://apps.apple.com/us/app/xs-card/id6742452317?uo=4"
+                  } else if (text === "Available on macOS") {
+                    return "https://apps.apple.com/us/app/xs-card/id6742452317?uo=4"
+                  }
+                  return null
+                }
+                const storeUrl = getStoreUrl(platformInfo.text)
+                const isClickable = storeUrl !== null
                 return (
                   <div className={`flex items-center space-x-2 ${platformInfo.className}`}>
                     {platformInfo.icon}
-                    <span>{platformInfo.text}</span>
+                    {isClickable ? (
+                      <a
+                        href={storeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline cursor-pointer"
+                      >
+                        {platformInfo.text}
+                      </a>
+                    ) : (
+                      <span>{platformInfo.text}</span>
+                    )}
                   </div>
                 )
               })()
