@@ -26,6 +26,104 @@ export interface SalesFormData {
   captchaToken?: string;
 }
 
+// Enterprise quote types
+export interface EnterpriseQuoteRequest {
+  companyName: string;
+  contactName: string;
+  contactEmail: string;
+  /**
+   * Can be a single integer (e.g. 250) or a range string like "201-1000" or "1000+"
+   */
+  numberOfEmployees: number | string;
+  /**
+   * Optional currency code (e.g. "ZAR"), defaults to "ZAR" on the backend
+   */
+  currency?: string;
+}
+
+export interface EnterpriseQuotePriceRange {
+  minEmployees: number;
+  maxEmployees: number;
+  minPrice: number;
+  maxPrice: number;
+  midEmployees: number;
+  midPrice: number;
+  formattedMinPrice: string;
+  formattedMaxPrice: string;
+}
+
+export interface EnterpriseQuote {
+  quoteId: string;
+  companyName: string;
+  contactName: string;
+  contactEmail: string;
+  numberOfEmployees: number | string;
+  calculatedPrice: number;
+  formattedPrice: string;
+  currency: string;
+  quoteStatus: string;
+  subscriptionType: string;
+  createdAt: string;
+  expiresAt: string;
+  priceRange?: EnterpriseQuotePriceRange;
+  paymentUrl?: string; // Payment URL from Phase 4
+}
+
+export interface EnterpriseQuoteSuccessResponse {
+  success: true;
+  quote: EnterpriseQuote;
+}
+
+export interface EnterpriseQuoteErrorResponse {
+  success: false;
+  error: string;
+  message?: string;
+  errors?: string[];
+}
+
+export type EnterpriseQuoteResponse =
+  | EnterpriseQuoteSuccessResponse
+  | EnterpriseQuoteErrorResponse;
+
+// Payment initialization types
+export interface PaymentInitializeRequest {
+  quoteId: string;
+}
+
+export interface PaymentInitializeSuccessResponse {
+  success: true;
+  paymentUrl: string;
+  quote: EnterpriseQuote; // Updated quote with status "accepted" and paymentUrl
+}
+
+export interface PaymentInitializeErrorResponse {
+  success: false;
+  error: string;
+  message?: string;
+  errors?: string[];
+}
+
+export type PaymentInitializeResponse =
+  | PaymentInitializeSuccessResponse
+  | PaymentInitializeErrorResponse;
+
+// Existing quotes by email types
+export interface EnterpriseQuotesByEmailSuccessResponse {
+  success: true;
+  quotes: EnterpriseQuote[];
+}
+
+export interface EnterpriseQuotesByEmailErrorResponse {
+  success: false;
+  error: string;
+  message?: string;
+  errors?: string[];
+}
+
+export type EnterpriseQuotesByEmailResponse =
+  | EnterpriseQuotesByEmailSuccessResponse
+  | EnterpriseQuotesByEmailErrorResponse;
+
 export interface QueryRequest {
   name: string;
   email: string;
@@ -52,9 +150,6 @@ const getApiBaseUrl = (): string => {
     if (hostname === 'xscard-app.onrender.com' || 
         hostname === 'xscard.co.za' || 
         hostname === 'www.xscard.co.za' ||
-        hostname.includes('vercel.app') ||
-        hostname.includes('netlify.app') ||
-        hostname.includes('github.io') ||
         hostname.includes('firebaseapp.com')) {
       console.log('🔍 DEBUG: API Config - Using production URL');
       return 'https://baseUrl.xscard.co.za';
@@ -77,8 +172,8 @@ const getApiBaseUrl = (): string => {
         hostname.includes('staging.')) {
       console.log('🔍 DEBUG: API Config - Using localhost backend (local development)');
       // Use localhost backend for local development
-      return 'https://baseUrl.xscard.co.za';
-    // return 'http://localhost:8383';
+     // return 'https://baseUrl.xscard.co.za';
+     return 'http://localhost:8383';
     }
   }
   
@@ -91,8 +186,8 @@ const getApiBaseUrl = (): string => {
     if (process.env.NODE_ENV === 'development') {
       console.log('🔍 DEBUG: API Config - Using localhost backend (development env)');
       // Use HTTP for local development
-      //return 'http://localhost:8383';
-      return 'https://baseUrl.xscard.co.za';
+      return 'http://localhost:8383';
+     // return 'https://baseUrl.xscard.co.za';
     }
   }
   
@@ -128,6 +223,9 @@ export const API_ENDPOINTS = {
   ANALYTICS: '/analytics',
   USERS: '/users',
   GET_CONTACTS: '/Contacts',
+  ENTERPRISE_QUOTE: '/api/enterprise/quote',
+  ENTERPRISE_PAYMENT_INITIALIZE: '/api/enterprise/payment/initialize',
+  ENTERPRISE_QUOTES_BY_EMAIL: '/api/enterprise/quotes/by-email',
 } as const;
 
 // Request configuration
@@ -307,6 +405,133 @@ ${formData.requirements}`;
   };
 
   return submitQuery(requestData);
+}
+
+/**
+ * Generate an enterprise quote for a given company and headcount
+ *
+ * This uses a public, rate-limited endpoint and does not require auth headers.
+ */
+export async function generateEnterpriseQuote(
+  data: EnterpriseQuoteRequest
+): Promise<EnterpriseQuoteResponse> {
+  const url = buildApiUrl(API_ENDPOINTS.ENTERPRISE_QUOTE);
+
+  console.log('🔍 Generating enterprise quote with data:', data);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...DEFAULT_HEADERS,
+      },
+      body: JSON.stringify(data),
+    });
+
+    const json = await response.json();
+    console.log('🔍 Enterprise quote response:', json);
+
+    // Backend always responds with { success: boolean, ... }
+    return json as EnterpriseQuoteResponse;
+  } catch (error) {
+    console.error('🔍 Enterprise quote request error:', error);
+
+    // Normalise network or unexpected errors into the error shape
+    const message =
+      error instanceof Error ? error.message : 'Network error occurred while generating quote';
+
+    return {
+      success: false,
+      error: 'Internal client error',
+      message,
+      errors: [message],
+    };
+  }
+}
+
+/**
+ * Initialize payment for an enterprise quote
+ *
+ * This calls the payment initialization endpoint which:
+ * - Changes quote status from "pending" to "accepted"
+ * - Returns a paymentUrl for the user to complete payment
+ */
+export async function initializeEnterprisePayment(
+  quoteId: string
+): Promise<PaymentInitializeResponse> {
+  const url = buildApiUrl(API_ENDPOINTS.ENTERPRISE_PAYMENT_INITIALIZE);
+
+  console.log('🔍 Initializing payment for quote:', quoteId);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...DEFAULT_HEADERS,
+      },
+      body: JSON.stringify({ quoteId }),
+    });
+
+    const json = await response.json();
+    console.log('🔍 Payment initialization response:', json);
+
+    // Backend always responds with { success: boolean, ... }
+    return json as PaymentInitializeResponse;
+  } catch (error) {
+    console.error('🔍 Payment initialization request error:', error);
+
+    // Normalise network or unexpected errors into the error shape
+    const message =
+      error instanceof Error ? error.message : 'Network error occurred while initializing payment';
+
+    return {
+      success: false,
+      error: 'Internal client error',
+      message,
+      errors: [message],
+    };
+  }
+}
+
+/**
+ * Fetch existing enterprise quotes for a given contact email.
+ *
+ * Used to surface non-expired quotes when the same email is used again.
+ */
+export async function fetchEnterpriseQuotesByEmail(
+  email: string
+): Promise<EnterpriseQuotesByEmailResponse> {
+  const url = buildApiUrl(
+    `${API_ENDPOINTS.ENTERPRISE_QUOTES_BY_EMAIL}?email=${encodeURIComponent(email)}`
+  );
+
+  console.log('🔍 Fetching enterprise quotes by email:', email);
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        ...DEFAULT_HEADERS,
+      },
+    });
+
+    const json = await response.json();
+    console.log('🔍 Quotes by email response:', json);
+
+    return json as EnterpriseQuotesByEmailResponse;
+  } catch (error) {
+    console.error('🔍 Quotes by email request error:', error);
+
+    const message =
+      error instanceof Error ? error.message : 'Network error occurred while fetching quotes';
+
+    return {
+      success: false,
+      error: 'Internal client error',
+      message,
+      errors: [message],
+    };
+  }
 }
 
 /**

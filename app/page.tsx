@@ -6,13 +6,26 @@ import type React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Smartphone, Users, Zap, Shield, Globe, Star, RefreshCw, User, Monitor, Tablet, Play, X as CloseIcon } from "lucide-react"
+import { ArrowRight, Smartphone, Users, Zap, Shield, Globe, Star, RefreshCw, User, Monitor, Tablet, Play, X as CloseIcon, Download } from "lucide-react"
 import Image from "next/image"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import emailjs from "@emailjs/browser"
 import Link from "next/link"
 import { useDeviceDetection } from "@/hooks/use-device-detection"
-import { getApkDownloadUrl, submitSalesForm, submitContactForm, handleApiError, submitQueryWithoutCaptcha, API_BASE_URL, isDevelopment } from "@/utils/api"
+import {
+  getApkDownloadUrl,
+  submitSalesForm,
+  submitContactForm,
+  handleApiError,
+  submitQueryWithoutCaptcha,
+  API_BASE_URL,
+  isDevelopment,
+  generateEnterpriseQuote,
+  fetchEnterpriseQuotesByEmail,
+  type EnterpriseQuote,
+  type EnterpriseQuoteResponse,
+  type EnterpriseQuotesByEmailResponse,
+} from "@/utils/api"
 import { useAuth } from "@/hooks/use-auth"
 import { AuthModal } from "@/components/auth/auth-modal"
 import { UserProfile } from "@/components/auth/user-profile"
@@ -157,6 +170,16 @@ export default function HomePage() {
   const [enterpriseSubmitStatus, setEnterpriseSubmitStatus] = useState<"idle" | "success" | "error">("idle")
   const [isEnterpriseCaptchaVerified, setIsEnterpriseCaptchaVerified] = useState(false)
   const [enterpriseCaptchaToken, setEnterpriseCaptchaToken] = useState<string | null>(null)
+  const [isEnterpriseQuoteLoading, setIsEnterpriseQuoteLoading] = useState(false)
+  const [enterpriseQuote, setEnterpriseQuote] = useState<EnterpriseQuote | null>(null)
+  const [enterpriseQuoteError, setEnterpriseQuoteError] = useState<string | null>(null)
+  const [showEnterpriseQuoteModal, setShowEnterpriseQuoteModal] = useState(false)
+  const [showExactEmployeeModal, setShowExactEmployeeModal] = useState(false)
+  const [exactEmployeeCount, setExactEmployeeCount] = useState<string>("")
+  const [existingEnterpriseQuotes, setExistingEnterpriseQuotes] = useState<EnterpriseQuote[]>([])
+  const quotePdfRef = useRef<HTMLDivElement>(null)
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+  const [paymentQrCode, setPaymentQrCode] = useState<string | null>(null)
   
   // Currency state
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>("ZAR")
@@ -460,6 +483,26 @@ export default function HomePage() {
   }
 
   // Enterprise Sales Form Handlers
+  const validateEnterpriseQuoteFields = (): boolean => {
+    const errors: Partial<EnterpriseSalesForm> = {}
+
+    if (!enterpriseForm.name.trim()) errors.name = "Name is required for a quote"
+    if (!enterpriseForm.email.trim()) {
+      errors.email = "Email is required for a quote"
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(enterpriseForm.email)) {
+      errors.email = "Please enter a valid email address"
+    }
+    if (!enterpriseForm.companyName.trim()) errors.companyName = "Company name is required for a quote"
+    if (!enterpriseForm.companySize) errors.companySize = "Company size is required for a quote"
+
+    if (Object.keys(errors).length > 0) {
+      setEnterpriseFormErrors(prev => ({ ...prev, ...errors }))
+      return false
+    }
+
+    return true
+  }
+
   const handleEnterpriseFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setEnterpriseForm(prev => ({ ...prev, [name]: value }))
@@ -487,6 +530,265 @@ export default function HomePage() {
     
     setEnterpriseFormErrors(errors)
     return Object.keys(errors).length === 0
+  }
+
+  // Build a stable, public payment entry URL for a quote (backend handles redirect to Paystack)
+  const getQuotePaymentEntryUrl = (quoteId: string): string => {
+    return `${API_BASE_URL}/pay/quote/${encodeURIComponent(quoteId)}`
+  }
+
+  const generatePaymentQrCode = async (url: string) => {
+    try {
+      const QRCode = (await import('qrcode')).default
+      const qrDataUrl = await QRCode.toDataURL(url, {
+        width: 200,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      })
+      setPaymentQrCode(qrDataUrl)
+    } catch (error) {
+      console.error('Error generating QR code:', error)
+      setPaymentQrCode(null)
+    }
+  }
+
+  const handleGetEnterpriseQuote = async () => {
+    // Basic validation specific to quote generation (no captcha required)
+    if (!validateEnterpriseQuoteFields()) {
+      return
+    }
+
+    const email = enterpriseForm.email.trim()
+    if (!email) {
+      setEnterpriseQuoteError("Email is required to check for existing quotes")
+      return
+    }
+
+    setEnterpriseQuoteError(null)
+    setIsEnterpriseQuoteLoading(true)
+
+    try {
+      // First, check for existing non-expired quotes for this email
+      const response: EnterpriseQuotesByEmailResponse = await fetchEnterpriseQuotesByEmail(email)
+
+      if (response.success) {
+        const now = new Date()
+        const activeQuotes = response.quotes.filter((quote) => {
+          const expiresAt = new Date(quote.expiresAt)
+          // Only consider non-expired quotes that are still pending
+          return (
+            expiresAt.getTime() > now.getTime() &&
+            quote.quoteStatus === "pending"
+          )
+        })
+
+        // Sort by createdAt descending (most recent first)
+        activeQuotes.sort((a, b) => {
+          const aTime = new Date(a.createdAt).getTime()
+          const bTime = new Date(b.createdAt).getTime()
+          return bTime - aTime
+        })
+
+        if (activeQuotes.length > 0) {
+          // Surface existing quotes non-blockingly
+          setExistingEnterpriseQuotes(activeQuotes)
+          setIsEnterpriseQuoteLoading(false)
+          return
+        }
+      } else {
+        // Non-blocking error: log and continue with new quote flow
+        const message =
+          response.message ||
+          (response.errors && response.errors.length > 0 ? response.errors[0] : undefined) ||
+          response.error ||
+          "Unable to check existing quotes. Continuing with new quote."
+
+        console.warn("Existing quotes lookup failed:", message)
+      }
+    } catch (error) {
+      console.error("Existing quotes lookup error:", error)
+      // Non-blocking: we still continue with new quote flow
+    } finally {
+      setIsEnterpriseQuoteLoading(false)
+    }
+
+    // No active quotes found (or lookup failed) - proceed to exact employee modal
+    setExactEmployeeCount("")
+    setShowExactEmployeeModal(true)
+  }
+
+  const handleViewExistingQuote = (quote?: EnterpriseQuote) => {
+    const targetQuote = quote ?? existingEnterpriseQuotes[0]
+    if (!targetQuote) return
+
+    setEnterpriseQuote(targetQuote)
+    setShowEnterpriseQuoteModal(true)
+
+    // Clear the suggestion list once a quote is opened
+    setExistingEnterpriseQuotes([])
+
+    // Always generate QR for the public payment entry URL based on quoteId
+    const entryUrl = getQuotePaymentEntryUrl(targetQuote.quoteId)
+    generatePaymentQrCode(entryUrl).catch((error) =>
+      console.error("Error generating QR code for existing quote:", error)
+    )
+  }
+
+  const handleCreateNewQuoteAnyway = () => {
+    // Clear any existing quote suggestions and proceed to new quote flow
+    setExistingEnterpriseQuotes([])
+    setExactEmployeeCount("")
+    setShowExactEmployeeModal(true)
+  }
+
+  const handleDownloadQuotePdf = async () => {
+    if (!quotePdfRef.current || !enterpriseQuote) return
+
+    setIsGeneratingPdf(true)
+    try {
+      // Dynamically import to avoid SSR issues
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas')
+      ])
+
+      // Capture the PDF preview container
+      const element = quotePdfRef.current
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      })
+
+      // Calculate PDF dimensions (A4 ratio)
+      const imgWidth = 210 // A4 width in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      const pdf = new jsPDF({
+        orientation: imgHeight > imgWidth ? 'portrait' : 'landscape',
+        unit: 'mm',
+        format: [imgWidth, imgHeight]
+      })
+
+      const imgData = canvas.toDataURL('image/png')
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight)
+
+      // Add clickable link overlay for the public payment entry URL
+      if (enterpriseQuote.quoteId) {
+        // The payment section appears before the footer, approximately 80-85% down the page
+        // Calculate position based on PDF height
+        const linkYPercent = 0.82 // 82% down the page (payment section area)
+        const linkY = imgHeight * linkYPercent
+        const linkX = 15 // Left margin (mm)
+        const linkWidth = imgWidth - 30 // Full width minus margins (mm)
+        const linkHeight = 12 // Height of clickable area (mm) - covers the URL text area
+        
+        // Convert mm to points for jsPDF (1mm = 2.83465 points)
+        // jsPDF uses points, and coordinates are from bottom-left
+        const pageHeightPoints = pdf.internal.pageSize.getHeight()
+        const linkYPoints = pageHeightPoints - (linkY * 2.83465) // Convert and flip Y axis
+        const linkXPoints = linkX * 2.83465
+        const linkWidthPoints = linkWidth * 2.83465
+        const linkHeightPoints = linkHeight * 2.83465
+        
+        // Add clickable link overlay
+        pdf.link(linkXPoints, linkYPoints - linkHeightPoints, linkWidthPoints, linkHeightPoints, {
+          url: getQuotePaymentEntryUrl(enterpriseQuote.quoteId)
+        })
+      }
+
+      // Generate filename
+      const filename = `XS_Card_Quote_${enterpriseQuote.quoteId}_${new Date().toISOString().split('T')[0]}.pdf`
+      pdf.save(filename)
+
+      toast({
+        title: "Quote Downloaded",
+        description: "Your quote has been downloaded successfully.",
+        variant: "default",
+      })
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      toast({
+        title: "Download Failed",
+        description: "Failed to generate PDF. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsGeneratingPdf(false)
+    }
+  }
+
+  const handleGenerateQuoteWithEmployeeCount = async () => {
+    setShowExactEmployeeModal(false)
+    setEnterpriseQuoteError(null)
+    setIsEnterpriseQuoteLoading(true)
+
+    try {
+      // Use exact number if provided, otherwise use the range from companySize
+      let numberOfEmployees: number | string
+      if (exactEmployeeCount.trim()) {
+        const parsed = parseInt(exactEmployeeCount.trim(), 10)
+        if (isNaN(parsed) || parsed < 1) {
+          setEnterpriseQuoteError("Please enter a valid number of employees (1 or more)")
+          setIsEnterpriseQuoteLoading(false)
+          return
+        }
+        numberOfEmployees = parsed
+      } else {
+        numberOfEmployees = enterpriseForm.companySize
+      }
+
+      const requestPayload = {
+        companyName: enterpriseForm.companyName.trim(),
+        contactName: enterpriseForm.name.trim(),
+        contactEmail: enterpriseForm.email.trim(),
+        numberOfEmployees: numberOfEmployees,
+        currency: selectedCurrency || "ZAR",
+      }
+
+      const response: EnterpriseQuoteResponse = await generateEnterpriseQuote(requestPayload)
+
+      if (response.success) {
+        setEnterpriseQuote(response.quote)
+        setShowEnterpriseQuoteModal(true)
+        setExactEmployeeCount("") // Reset for next time
+        
+        // Generate QR code for the public payment entry URL (backend will handle init/redirect)
+        const entryUrl = getQuotePaymentEntryUrl(response.quote.quoteId)
+        await generatePaymentQrCode(entryUrl)
+      } else {
+        const primaryMessage =
+          response.message ||
+          (response.errors && response.errors.length > 0 ? response.errors[0] : undefined) ||
+          response.error ||
+          "Unable to generate quote. Please check your details and try again."
+
+        setEnterpriseQuote(null)
+        setEnterpriseQuoteError(primaryMessage)
+
+        toast({
+          title: "Could not generate quote",
+          description: primaryMessage,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Enterprise quote error:", error)
+      const message = handleApiError(error)
+      setEnterpriseQuote(null)
+      setEnterpriseQuoteError(message)
+
+      toast({
+        title: "Something went wrong",
+        description: message,
+        variant: "destructive",
+      })
+    } finally {
+      setIsEnterpriseQuoteLoading(false)
+    }
   }
 
   const handleEnterpriseSubmit = async (e: React.FormEvent) => {
@@ -2196,11 +2498,62 @@ export default function HomePage() {
                 />
               </div>
 
-              {/* Submit Button */}
+              {/* Actions */}
+              {enterpriseQuoteError && (
+                <p className="text-red-400 text-sm text-center">{enterpriseQuoteError}</p>
+              )}
+
+              {/* Existing quote notice (non-blocking) */}
+              {existingEnterpriseQuotes.length > 0 && (
+                <div className="mt-3 mb-4 p-3 bg-blue-500/15 border border-blue-500/40 rounded-lg">
+                  <p className="text-white text-xs font-medium mb-2">
+                    You already have {existingEnterpriseQuotes.length === 1 ? "an active quote" : "active quotes"} for this email.
+                  </p>
+                  <p className="text-white/80 text-xs mb-3">
+                    You can open your latest quote preview and payment options, or create a new quote.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleViewExistingQuote()}
+                      className="w-full sm:w-auto bg-white/10 border-white/40 text-white hover:bg-white/20 text-xs font-semibold"
+                    >
+                      View latest quote
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleCreateNewQuoteAnyway}
+                      className="w-full sm:flex-1 bg-custom-btn-gradient hover:opacity-90 text-white text-xs font-semibold"
+                    >
+                      Create new quote anyway
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col md:flex-row gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleGetEnterpriseQuote}
+                  disabled={isEnterpriseQuoteLoading || isEnterpriseSubmitting}
+                  className="w-full md:w-auto bg-white/10 border-white/40 text-white hover:bg-white/20"
+                >
+                  {isEnterpriseQuoteLoading ? (
+                    <div className="flex items-center space-x-2">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Getting quote...</span>
+                    </div>
+                  ) : (
+                    "Get a quote"
+                  )}
+                </Button>
+
               <Button
                 type="submit"
                 disabled={isEnterpriseSubmitting || enterpriseSubmitStatus === "success"}
-                className="w-full bg-custom-btn-gradient hover:opacity-90 text-white py-3 text-lg font-semibold transition-opacity"
+                  className="w-full md:flex-1 bg-custom-btn-gradient hover:opacity-90 text-white py-3 text-lg font-semibold transition-opacity"
               >
                 {isEnterpriseSubmitting ? (
                   <div className="flex items-center space-x-2">
@@ -2211,6 +2564,7 @@ export default function HomePage() {
                   "Submit"
                 )}
               </Button>
+              </div>
 
               {/* Footer Text */}
               <div className="text-center pt-4 border-t border-white/10">
@@ -2219,6 +2573,7 @@ export default function HomePage() {
                 </p>
               </div>
             </form>
+
           </div>
         </div>
       )}
@@ -2391,6 +2746,368 @@ export default function HomePage() {
             <div className="p-6 bg-white/5">
               <h3 className="text-2xl font-bold text-white mb-2">XS Card Demo</h3>
               <p className="text-white/70">See how XS Card transforms digital networking</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exact Employee Count Modal */}
+      {showExactEmployeeModal && (
+        <div 
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          onClick={() => setShowExactEmployeeModal(false)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-300 ease-out" />
+          
+          {/* Modal Content */}
+          <div 
+            className="relative bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl max-w-md w-full animate-fade-in-scale overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              animation: 'fadeInScale 0.3s ease-out'
+            }}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowExactEmployeeModal(false)}
+              className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200 hover:scale-110"
+              aria-label="Close"
+            >
+              <CloseIcon className="w-5 h-5" />
+            </button>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <div className="mb-6">
+                <h3 className="text-2xl font-bold text-white mb-2">Exact Employee Count</h3>
+                <p className="text-white/70 text-sm">
+                  Enter the exact number of employees for a precise quote, or skip to use an estimate based on your company size range.
+                </p>
+              </div>
+
+              {/* Alert */}
+              {!exactEmployeeCount.trim() && (
+                <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
+                  <p className="text-yellow-300 text-sm">
+                    ⚠️ If you skip this, an estimate will be calculated using the midpoint of your selected range ({enterpriseForm.companySize} employees).
+                  </p>
+                </div>
+              )}
+
+              {/* Input */}
+              <div className="mb-6">
+                <label htmlFor="exactEmployeeCount" className="block text-sm font-medium text-white mb-2">
+                  Number of Employees (Optional)
+                </label>
+                <input
+                  type="number"
+                  id="exactEmployeeCount"
+                  min="1"
+                  step="1"
+                  value={exactEmployeeCount}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    // Allow empty string or any positive integer
+                    if (value === "" || (!isNaN(parseInt(value, 10)) && parseInt(value, 10) > 0)) {
+                      setExactEmployeeCount(value)
+                    }
+                  }}
+                  placeholder="e.g. 250"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+                {exactEmployeeCount && (
+                  <p className="text-white/60 text-xs mt-2">
+                    You'll receive a precise quote for {parseInt(exactEmployeeCount, 10).toLocaleString()} employees
+                  </p>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowExactEmployeeModal(false)
+                    setExactEmployeeCount("")
+                  }}
+                  className="w-full sm:w-auto bg-white/10 border-white/30 text-white hover:bg-white/20"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleGenerateQuoteWithEmployeeCount}
+                  disabled={isEnterpriseQuoteLoading}
+                  className="w-full sm:flex-1 bg-custom-btn-gradient hover:opacity-90 text-white font-semibold"
+                >
+                  {isEnterpriseQuoteLoading ? (
+                    <div className="flex items-center space-x-2">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Generating quote...</span>
+                    </div>
+                  ) : exactEmployeeCount.trim() ? (
+                    "Get Precise Quote"
+                  ) : (
+                    "Get Estimated Quote"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enterprise Quote Preview Modal - PDF Style */}
+      {showEnterpriseQuoteModal && enterpriseQuote && (
+        <div 
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          onClick={() => setShowEnterpriseQuoteModal(false)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-300 ease-out" />
+          
+          {/* Modal Content */}
+          <div 
+            className="relative bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[95vh] animate-fade-in-scale overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              animation: 'fadeInScale 0.3s ease-out'
+            }}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowEnterpriseQuoteModal(false)}
+              className="absolute top-3 right-3 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all duration-200 hover:scale-110"
+              aria-label="Close quote preview"
+            >
+              <CloseIcon className="w-5 h-5" />
+            </button>
+
+            {/* PDF Preview Container */}
+            <div ref={quotePdfRef} className="relative bg-white rounded-lg mx-3 my-3 shadow-2xl flex-1 overflow-y-auto">
+              {/* Watermark */}
+              <div 
+                className="absolute inset-0 pointer-events-none flex items-center justify-center"
+                style={{
+                  opacity: 0.08,
+                  transform: 'rotate(-45deg)',
+                  fontSize: '6rem',
+                  fontWeight: 'bold',
+                  color: '#000',
+                  userSelect: 'none',
+                }}
+              >
+                QUOTE
+              </div>
+
+              {/* PDF Content */}
+              <div className="relative min-h-full p-6 md:p-8 flex flex-col text-gray-900">
+                {/* Header */}
+                <div className="mb-6 pb-4 border-b-2 border-gray-200">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h1 className="text-2xl font-bold text-gray-900 mb-1">Enterprise Quote</h1>
+                      <p className="text-xs text-gray-600">XS Card Digital Business Card Solution</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500 mb-1">Quote ID</p>
+                      <p className="text-xs font-mono font-semibold text-gray-900 break-all">{enterpriseQuote.quoteId}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                    <span>
+                      <span className="font-semibold">Date:</span>{" "}
+                      {new Date(enterpriseQuote.createdAt).toLocaleDateString('en-GB', {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </span>
+                    <span>•</span>
+                    <span>
+                      <span className="font-semibold">Valid Until:</span>{" "}
+                      {new Date(enterpriseQuote.expiresAt).toLocaleDateString('en-GB', {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Company Information */}
+                <div className="mb-6">
+                  <h2 className="text-base font-semibold text-gray-900 mb-2">Prepared For</h2>
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <p className="font-semibold text-gray-900">{enterpriseQuote.companyName}</p>
+                    <p className="text-gray-700 text-sm mt-1">{enterpriseQuote.contactName}</p>
+                    <p className="text-gray-600 text-xs mt-1">{enterpriseQuote.contactEmail}</p>
+                  </div>
+                </div>
+
+                {/* Pricing Section */}
+                <div className="mb-6 flex-1">
+                  <h2 className="text-base font-semibold text-gray-900 mb-3">
+                    {typeof enterpriseQuote.numberOfEmployees === "string"
+                      ? "Pricing Estimate"
+                      : "Pricing"}
+                  </h2>
+                  
+                  <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-4 mb-3">
+                    <div className="flex items-baseline justify-between mb-2">
+                      <p className="text-xs text-gray-600 uppercase tracking-wide">
+                        {typeof enterpriseQuote.numberOfEmployees === "string"
+                          ? "Estimated Yearly Price"
+                          : "Yearly Price"}
+                      </p>
+                      <p className="text-3xl font-bold text-gray-900">{enterpriseQuote.formattedPrice}</p>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-600 mt-2">
+                      <span>
+                        {typeof enterpriseQuote.numberOfEmployees === "string"
+                          ? `${enterpriseQuote.numberOfEmployees} employees`
+                          : typeof enterpriseQuote.numberOfEmployees === "number"
+                          ? `${enterpriseQuote.numberOfEmployees.toLocaleString()} employees`
+                          : "N/A employees"}
+                      </span>
+                      <span className="uppercase text-xs">
+                        {enterpriseQuote.currency} • {enterpriseQuote.subscriptionType}
+                      </span>
+                    </div>
+                  </div>
+
+                  {enterpriseQuote.priceRange && (
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-xs font-semibold text-gray-700 mb-2">Price Range Estimate</p>
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <p className="text-gray-600">Minimum</p>
+                          <p className="font-semibold text-gray-900">{enterpriseQuote.priceRange.formattedMinPrice}</p>
+                          <p className="text-xs text-gray-500 mt-1">{enterpriseQuote.priceRange.minEmployees} employees</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">Maximum</p>
+                          <p className="font-semibold text-gray-900">{enterpriseQuote.priceRange.formattedMaxPrice}</p>
+                          <p className="text-xs text-gray-500 mt-1">{enterpriseQuote.priceRange.maxEmployees} employees</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-600 mt-2 pt-2 border-t border-gray-200">
+                        Mid-point: {enterpriseQuote.priceRange.formattedMinPrice} – {enterpriseQuote.priceRange.formattedMaxPrice} 
+                        for {enterpriseQuote.priceRange.minEmployees}–{enterpriseQuote.priceRange.maxEmployees} employees
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Payment Section - Uses public payment entry URL */}
+                <div className="mb-6 pt-4 border-t border-gray-200">
+                  <h2 className="text-base font-semibold text-gray-900 mb-3">Proceed to Payment</h2>
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4">
+                    <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
+                      {paymentQrCode && (
+                        <div className="flex-shrink-0">
+                          <img 
+                            src={paymentQrCode} 
+                            alt="Payment QR Code" 
+                            className="w-32 h-32 border-2 border-gray-200 rounded-lg bg-white p-2"
+                          />
+                          <p className="text-xs text-gray-600 text-center mt-2">Scan to pay</p>
+                        </div>
+                      )}
+                      <div className="flex-1 text-center md:text-left">
+                        <p className="text-sm font-semibold text-gray-900 mb-2">Ready to proceed with payment</p>
+                        <a
+                          href={getQuotePaymentEntryUrl(enterpriseQuote.quoteId)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block text-xs text-blue-600 hover:text-blue-800 underline break-all cursor-pointer relative z-10"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {getQuotePaymentEntryUrl(enterpriseQuote.quoteId)}
+                        </a>
+                        <p className="text-xs text-gray-600 mt-2">
+                          Click the link above or scan the QR code to complete your payment
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="mt-auto pt-4 border-t border-gray-200">
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <div>
+                      <p className="font-semibold text-gray-700 mb-1">
+                        Status: <span className="capitalize text-gray-900">{enterpriseQuote.quoteStatus}</span>
+                      </p>
+                      {typeof enterpriseQuote.numberOfEmployees === "string" && (
+                        <p className="text-xs">
+                          This is an estimate based on your selected employee range and may vary based on final requirements.
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-700">XS Card</p>
+                      <p className="text-xs">Enterprise Solutions</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-white/5 border-t border-white/10">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <p className="text-white/70 text-xs">Valid until {new Date(enterpriseQuote.expiresAt).toLocaleDateString('en-GB', {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}</p>
+                <div className="flex items-center gap-2">
+                  {(enterpriseQuote.quoteStatus === "pending" || enterpriseQuote.quoteStatus === "accepted") && (
+                    <Button
+                      size="sm"
+                      className="bg-custom-btn-gradient hover:opacity-90 text-white font-semibold"
+                      onClick={() => {
+                        const entryUrl = getQuotePaymentEntryUrl(enterpriseQuote.quoteId)
+                        window.open(entryUrl, "_blank", "noopener,noreferrer")
+                      }}
+                    >
+                      Proceed to Payment
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadQuotePdf}
+                    disabled={isGeneratingPdf}
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  >
+                    {isGeneratingPdf ? (
+                      <div className="flex items-center space-x-2">
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <Download className="w-4 h-4" />
+                        <span>Download Quote</span>
+                      </div>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowEnterpriseQuoteModal(false)
+                      setPaymentQrCode(null)
+                    }}
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

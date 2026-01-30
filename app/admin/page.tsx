@@ -87,7 +87,7 @@ interface UserContact {
 
 export default function AdminDashboard() {
   const { toast } = useToast()
-  const [activeTab, setActiveTab] = useState<"requests" | "users" | "video-upload">("requests")
+  const [activeTab, setActiveTab] = useState<"requests" | "users" | "video-upload">("users")
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [requests, setRequests] = useState<CustomerRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -144,6 +144,20 @@ const [userContacts, setUserContacts] = useState<UserContact[]>([])
 const [isContactsLoading, setIsContactsLoading] = useState(false)
 const [contactsError, setContactsError] = useState<string | null>(null)
   const [userSearchTerm, setUserSearchTerm] = useState('')
+  // Filter states
+  const [userFilters, setUserFilters] = useState<{
+    dateJoined: string
+    status: string
+    plan: string
+    activity: string
+  }>({
+    dateJoined: '',
+    status: '',
+    plan: '',
+    activity: ''
+  })
+  // Contact counts state for lazy loading
+  const [userContactCounts, setUserContactCounts] = useState<Record<string, number | 'loading' | 'error'>>({})
 
   function formatPlanLabel(plan?: string | null): string {
     if (!plan) return "Unknown"
@@ -494,27 +508,119 @@ const [contactsError, setContactsError] = useState<string | null>(null)
     fetchUsers()
   }, [accessDenied])
   
+  // Get all unique plans for filter dropdown
+  const uniquePlans = Array.from(new Set(users.map(u => u.plan).filter(Boolean))).sort()
+
   const filteredUsers = users.filter((user) => {
-    if (!userSearchTerm.trim()) return true
+    // Search term filter
+    if (userSearchTerm.trim()) {
+      const term = userSearchTerm.trim().toLowerCase()
+      const valuesToSearch = [
+        user.firstName,
+        user.lastName,
+        user.email,
+        user.plan,
+        user.status,
+        formatUserDate(user.createdAt),
+      ]
 
-    const term = userSearchTerm.trim().toLowerCase()
-    const valuesToSearch = [
-      user.firstName,
-      user.lastName,
-      user.email,
-      user.plan,
-      user.status,
-      formatUserDate(user.createdAt),
-    ]
+      const matchesSearch = valuesToSearch.some((value) =>
+        typeof value === 'string' && value.toLowerCase().includes(term)
+      )
+      if (!matchesSearch) return false
+    }
 
-    return valuesToSearch.some((value) =>
-      typeof value === 'string' && value.toLowerCase().includes(term)
-    )
+    // Status filter
+    if (userFilters.status && user.status !== userFilters.status) {
+      return false
+    }
+
+    // Plan filter
+    if (userFilters.plan && user.plan !== userFilters.plan) {
+      return false
+    }
+
+    // Date joined filter
+    if (userFilters.dateJoined) {
+      const userDate = parseFirestoreDate(user.createdAt)
+      if (userDate) {
+        const filterDate = new Date(userFilters.dateJoined)
+        const filterYear = filterDate.getFullYear()
+        const filterMonth = filterDate.getMonth()
+        
+        if (userDate.getFullYear() !== filterYear || userDate.getMonth() !== filterMonth) {
+          return false
+        }
+      } else {
+        return false
+      }
+    }
+
+    // Activity filter is handled after contact counts are loaded (in sorting)
+    return true
   })
 
-  const totalUserPages = Math.max(1, Math.ceil(filteredUsers.length / usersPerPage))
+  // Sort by activity (contact count) if activity filter is set
+  let sortedUsers = [...filteredUsers]
+  if (userFilters.activity === 'highest') {
+    sortedUsers.sort((a, b) => {
+      const aId = a.uid ?? a.id
+      const bId = b.uid ?? b.id
+      const aCount = typeof userContactCounts[aId] === 'number' ? userContactCounts[aId] as number : 0
+      const bCount = typeof userContactCounts[bId] === 'number' ? userContactCounts[bId] as number : 0
+      return bCount - aCount // Highest first
+    })
+  }
+
+  const totalUserPages = Math.max(1, Math.ceil(sortedUsers.length / usersPerPage))
   const usersCurrentPage = Math.min(userPage, totalUserPages)
-  const paginatedUsers = filteredUsers.slice((usersCurrentPage - 1) * usersPerPage, usersCurrentPage * usersPerPage)
+  const paginatedUsers = sortedUsers.slice((usersCurrentPage - 1) * usersPerPage, usersCurrentPage * usersPerPage)
+
+  // Lazy load contact counts for users on current page
+  useEffect(() => {
+    const loadContactCounts = async () => {
+      if (paginatedUsers.length === 0) return
+
+      const currentPageUserIds = paginatedUsers.map(u => u.uid ?? u.id)
+
+      // Mark users as loading (only if not already loaded)
+      const loadingCounts: Record<string, 'loading'> = {}
+      currentPageUserIds.forEach(userId => {
+        const currentCount = userContactCounts[userId]
+        if (!currentCount || currentCount === 'error') {
+          loadingCounts[userId] = 'loading'
+        }
+      })
+      
+      if (Object.keys(loadingCounts).length > 0) {
+        setUserContactCounts(prev => ({ ...prev, ...loadingCounts }))
+      }
+
+      // Fetch counts for all users on current page in parallel
+      const fetchPromises = paginatedUsers.map(async (user) => {
+        const userId = user.uid ?? user.id
+        const currentCount = userContactCounts[userId]
+        
+        // Skip if already loaded
+        if (currentCount && typeof currentCount === 'number') {
+          return
+        }
+
+        try {
+          const count = await fetchUserContactCount(user)
+          setUserContactCounts(prev => ({ ...prev, [userId]: count }))
+        } catch (error) {
+          console.error(`Failed to fetch contact count for user ${userId}:`, error)
+          setUserContactCounts(prev => ({ ...prev, [userId]: 'error' }))
+        }
+      })
+
+      await Promise.all(fetchPromises)
+    }
+
+    loadContactCounts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usersCurrentPage, paginatedUsers.map(u => `${u.uid ?? u.id}`).join(',')])
 
   const openContactsModal = async (user: AdminUser) => {
     setContactsUser(user)
@@ -596,6 +702,52 @@ const [contactsError, setContactsError] = useState<string | null>(null)
     setContactsError(null)
     setIsContactsLoading(false)
   }
+
+  // Fetch contact count for a single user
+  const fetchUserContactCount = async (user: AdminUser): Promise<number> => {
+    try {
+      const currentUser = auth.currentUser
+      if (!currentUser) {
+        throw new Error('User not authenticated')
+      }
+
+      const idToken = await currentUser.getIdToken()
+      const uid = user.uid ?? user.id
+      const endpoint = `${API_BASE_URL}${API_ENDPOINTS.GET_CONTACTS}/${encodeURIComponent(uid)}`
+
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json',
+        },
+        mode: 'cors',
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+
+      let contactsData: any[] = []
+      if (Array.isArray(result)) {
+        contactsData = result
+      } else if (Array.isArray(result?.data)) {
+        contactsData = result.data
+      } else if (Array.isArray(result?.contacts)) {
+        contactsData = result.contacts
+      } else if (Array.isArray(result?.contactList)) {
+        contactsData = result.contactList
+      }
+
+      return contactsData.length
+    } catch (error) {
+      console.error('❌ Failed to fetch contact count:', error)
+      throw error
+    }
+  }
+
   
   // Prevent scrolling when modal is open
   useEffect(() => {
@@ -1648,19 +1800,6 @@ const [contactsError, setContactsError] = useState<string | null>(null)
               {/* Navigation Tabs */}
               <div className="flex border-b border-white/20 overflow-x-auto">
                 <button
-                  onClick={() => setActiveTab("requests")}
-                  className={`px-3 sm:px-6 md:px-8 py-3 sm:py-6 font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
-                    activeTab === "requests"
-                      ? "text-white border-b-2 border-purple-400 bg-white/10"
-                      : "text-white/70 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  <div className="flex items-center space-x-2 sm:space-x-3">
-                    <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="text-sm sm:text-base md:text-lg">Customer Requests</span>
-                  </div>
-                </button>
-                <button
                   onClick={() => setActiveTab("users")}
                   className={`px-3 sm:px-6 md:px-8 py-3 sm:py-6 font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                     activeTab === "users"
@@ -1671,6 +1810,19 @@ const [contactsError, setContactsError] = useState<string | null>(null)
                   <div className="flex items-center space-x-2 sm:space-x-3">
                     <Users className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span className="text-sm sm:text-base md:text-lg">User Directory</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab("requests")}
+                  className={`px-3 sm:px-6 md:px-8 py-3 sm:py-6 font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
+                    activeTab === "requests"
+                      ? "text-white border-b-2 border-purple-400 bg-white/10"
+                      : "text-white/70 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <div className="flex items-center space-x-2 sm:space-x-3">
+                    <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="text-sm sm:text-base md:text-lg">Customer Requests</span>
                   </div>
                 </button>
                 <button
@@ -2180,7 +2332,7 @@ const [contactsError, setContactsError] = useState<string | null>(null)
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                       <h2 className="text-xl sm:text-2xl font-bold text-white">User Directory</h2>
                       <div className="text-white/60 text-sm">
-                        {isLoadingUsers ? "Loading users..." : `${filteredUsers.length} users`}
+                        {isLoadingUsers ? "Loading users..." : `${sortedUsers.length} users`}
                       </div>
                     </div>
 
@@ -2249,6 +2401,90 @@ const [contactsError, setContactsError] = useState<string | null>(null)
                         )}
                       </div>
 
+                      {/* Filter Controls */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-white/70 mb-1">
+                            Date Joined
+                          </label>
+                          <input
+                            type="month"
+                            value={userFilters.dateJoined}
+                            onChange={(e) => {
+                              setUserFilters(prev => ({ ...prev, dateJoined: e.target.value }))
+                              setUserPage(1)
+                            }}
+                            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-white/70 mb-1">
+                            Status
+                          </label>
+                          <select
+                            value={userFilters.status}
+                            onChange={(e) => {
+                              setUserFilters(prev => ({ ...prev, status: e.target.value }))
+                              setUserPage(1)
+                            }}
+                            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          >
+                            <option value="">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="pending">Pending</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-white/70 mb-1">
+                            Plan
+                          </label>
+                          <select
+                            value={userFilters.plan}
+                            onChange={(e) => {
+                              setUserFilters(prev => ({ ...prev, plan: e.target.value }))
+                              setUserPage(1)
+                            }}
+                            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          >
+                            <option value="">All Plans</option>
+                            {uniquePlans.map(plan => (
+                              <option key={plan} value={plan}>{formatPlanLabel(plan)}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-white/70 mb-1">
+                            Activity
+                          </label>
+                          <select
+                            value={userFilters.activity}
+                            onChange={(e) => {
+                              setUserFilters(prev => ({ ...prev, activity: e.target.value }))
+                              setUserPage(1)
+                            }}
+                            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          >
+                            <option value="">All</option>
+                            <option value="highest">Highest Contacts</option>
+                          </select>
+                        </div>
+                      </div>
+                      {(userFilters.dateJoined || userFilters.status || userFilters.plan || userFilters.activity) && (
+                        <div className="flex justify-end">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setUserFilters({ dateJoined: '', status: '', plan: '', activity: '' })
+                              setUserPage(1)
+                            }}
+                            className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                          >
+                            Clear Filters
+                          </Button>
+                        </div>
+                      )}
+
                       {isLoadingUsers && (
                         <div className="space-y-3">
                           {Array.from({ length: 4 }).map((_, index) => (
@@ -2260,11 +2496,11 @@ const [contactsError, setContactsError] = useState<string | null>(null)
                         </div>
                       )}
 
-                      {!isLoadingUsers && !usersError && filteredUsers.length === 0 && (
+                      {!isLoadingUsers && !usersError && sortedUsers.length === 0 && (
                         <p className="text-white/70 text-center py-8">No users found.</p>
                       )}
 
-                      {!isLoadingUsers && filteredUsers.length > 0 && (
+                      {!isLoadingUsers && sortedUsers.length > 0 && (
                         <Card className="bg-white/10 backdrop-blur-sm border border-white/20 overflow-hidden">
                           <CardContent className="p-0">
                             <div className="overflow-x-auto">
@@ -2288,6 +2524,9 @@ const [contactsError, setContactsError] = useState<string | null>(null)
                                     </th>
                                     <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/70">
                                       Joined
+                                    </th>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/70">
+                                      Contacts
                                     </th>
                                     <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-white/70">
                                       Actions
@@ -2333,6 +2572,28 @@ const [contactsError, setContactsError] = useState<string | null>(null)
                                         <td className="px-4 py-3 text-sm text-white/60">
                                           {joinedLabel ?? "—"}
                                         </td>
+                                        <td className="px-4 py-3 text-sm text-white/70">
+                                          {(() => {
+                                            const userId = user.uid ?? user.id
+                                            const contactCount = userContactCounts[userId]
+                                            
+                                            if (contactCount === 'loading') {
+                                              return (
+                                                <span className="text-white/50 text-xs">
+                                                  <RefreshCw className="w-3 h-3 inline animate-spin mr-1" />
+                                                  Loading...
+                                                </span>
+                                              )
+                                            }
+                                            if (contactCount === 'error') {
+                                              return <span className="text-red-400/70 text-xs">Error</span>
+                                            }
+                                            if (typeof contactCount === 'number') {
+                                              return <span className="font-medium">{contactCount}</span>
+                                            }
+                                            return <span className="text-white/40">—</span>
+                                          })()}
+                                        </td>
                                         <td className="px-4 py-3 text-right">
                                           <Button
                                             variant="outline"
@@ -2353,7 +2614,7 @@ const [contactsError, setContactsError] = useState<string | null>(null)
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-white/10 px-4 py-3 bg-white/5">
                               <p className="text-xs text-white/60">
                                 Showing {(usersCurrentPage - 1) * usersPerPage + 1} to{" "}
-                                {Math.min(usersCurrentPage * usersPerPage, filteredUsers.length)} of {filteredUsers.length} users
+                                {Math.min(usersCurrentPage * usersPerPage, sortedUsers.length)} of {sortedUsers.length} users
                                 {isDemoUsers && " (demo data)"}
                               </p>
                               <div className="flex items-center space-x-2">
