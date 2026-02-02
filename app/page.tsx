@@ -995,7 +995,7 @@ export default function HomePage() {
             ✨ The Future Access Card, Today
           </Badge>
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight animate-fade-in-up animation-delay-200">
-            Your Digital
+            Your Virtual
             <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
               {" "}
               Access Card
@@ -1457,7 +1457,7 @@ export default function HomePage() {
                   </div>
                   <h4 className="text-lg font-semibold text-white mb-2">Human Resources</h4>
                   <p className="text-white/70 text-sm leading-relaxed">
-                    Onboard faster and stay consistent. Issue digital business cards instantly and maintain up-to-date roles, contact details, and branding across the organisation.
+                    Onboard faster and stay consistent. Issue virtual access cards instantly and maintain up-to-date roles, contact details, and branding across the organisation.
                   </p>
                 </CardContent>
               </Card>
