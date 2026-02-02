@@ -162,7 +162,7 @@ export default function EnvironmentalImpactDemo() {
             Environmental Impact Calculator
           </h2>
           <p className="text-xl text-white/80 max-w-3xl mx-auto">
-            See how much your company can impact the environment and save money by switching from physical to digital business cards
+            See how much your company can impact the environment and save money by switching from physical to virtual access cards
           </p>
         </div>
         
