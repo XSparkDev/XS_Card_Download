@@ -1023,7 +1023,7 @@ export default function HomePage() {
             </span>
           </h1>
           <p className="text-lg sm:text-xl text-white/80 mb-8 max-w-3xl mx-auto leading-relaxed animate-fade-in-up animation-delay-400 px-4">
-            A virtual access card and networking dashboard designed to help professionals build meaningful connections, remember every interaction, and never lose track of a contact again.
+            A virtual card and networking dashboard designed to help professionals build meaningful connections, remember every interaction, and never lose track of a contact again.
           </p>
           <div className="flex justify-center items-center animate-fade-in-up animation-delay-600">
             <Button
@@ -1195,7 +1195,7 @@ export default function HomePage() {
                 <ul className="space-y-3 mb-8">
                   <li className="flex items-start">
                     <span className="text-green-500 mr-2">✓</span>
-                    <span className="text-gray-700">Create one basic virtual access card</span>
+                    <span className="text-gray-700">Create one basic virtual card</span>
                   </li>
                   <li className="flex items-start">
                     <span className="text-green-500 mr-2">✓</span>
@@ -1248,7 +1248,7 @@ export default function HomePage() {
                 <ul className="space-y-3 mb-8">
                   <li className="flex items-start">
                     <span className="text-green-500 mr-2">✓</span>
-                    <span className="text-gray-700">Create unlimited virtual access cards</span>
+                    <span className="text-gray-700">Create unlimited virtual cards</span>
                   </li>
                   <li className="flex items-start">
                     <span className="text-green-500 mr-2">✓</span>
@@ -1374,7 +1374,7 @@ export default function HomePage() {
               Connect. Remember. Grow.
             </p>
             <p className="text-lg text-white/70 max-w-4xl mx-auto mt-6 animate-fade-in-up animation-delay-600">
-              XS Card is a virtual access card and relationship dashboard built for teams who value meaningful connections. It helps organisations track interactions, understand engagement, and maintain continuity across every professional touchpoint — all in one intuitive system.
+              XS Card is a virtual card and relationship dashboard built for teams who value meaningful connections. It helps organisations track interactions, understand engagement, and maintain continuity across every professional touchpoint — all in one intuitive system.
             </p>
             <p className="text-base text-white/60 max-w-4xl mx-auto mt-4 animate-fade-in-up animation-delay-800">
               From marketing and sales to HR and operations, XS Card ensures every connection is captured, remembered, and actionable, giving teams clarity and control over their professional networks.
@@ -1483,7 +1483,7 @@ export default function HomePage() {
                   </div>
                   <h4 className="text-lg font-semibold text-white mb-2">Human Resources</h4>
                   <p className="text-white/70 text-sm leading-relaxed">
-                    Onboard faster and stay consistent. Issue virtual access cards instantly and maintain up-to-date roles, contact details, and branding across the organisation.
+                    Onboard faster and stay consistent. Issue virtual cards instantly and maintain up-to-date roles, contact details, and branding across the organisation.
                   </p>
                 </CardContent>
               </Card>
@@ -1545,10 +1545,10 @@ export default function HomePage() {
               <CardContent className="p-0">
                 <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">Ready to Go Digital?</h2>
                 <p className="text-xl text-white/80 mb-6 max-w-2xl mx-auto">
-                  Join thousands of professionals who've already made the switch to virtual access cards.
+                  Join thousands of professionals who've already made the switch to virtual cards.
                 </p>
                 <p className="text-sm text-white/60 mb-8 max-w-xl mx-auto">
-                  🌱 By choosing virtual access cards, you're helping reduce paper waste and supporting our carbon
+                  🌱 By choosing virtual cards, you're helping reduce paper waste and supporting our carbon
                   offset initiatives. Every digital card created helps fund reforestation projects worldwide.
                 </p>
                 <div className="flex justify-center">
@@ -1787,7 +1787,7 @@ export default function HomePage() {
             {/* Additional Info */}
             <div className="text-center">
               <p className="text-xs text-white/80 font-medium drop-shadow-sm">
-                Start creating your virtual access card in minutes. No credit card required for free plan.
+                Start creating your virtual card in minutes. No credit card required for free plan.
               </p>
             </div>
           </div>
