@@ -1088,10 +1088,10 @@ export default function HomePage() {
             </h2>
             <div className="text-xl text-white/80 max-w-3xl mx-auto animate-fade-in-up animation-delay-400 mb-8 space-y-4">
               <p>
-                Professional relationships don't end after the first exchange — they grow over time. XS Card helps you remember every interaction, track every connection, and build stronger professional relationships without effort.
+                Professional relationships don't end after the first exchange - they grow over time. XS Card helps you remember every interaction, track every connection, and build stronger professional relationships without effort.
               </p>
               <p>
-                More than a virtual card, XS Card is a smart networking dashboard that captures context, engagement, and follow-ups automatically — so no contact is ever forgotten and no opportunity slips through the cracks.
+                More than a virtual card, XS Card is a smart networking dashboard that captures context, engagement, and follow-ups automatically - so no contact is ever forgotten and no opportunity slips through the cracks.
               </p>
             </div>
             
@@ -1374,7 +1374,7 @@ export default function HomePage() {
               Connect. Remember. Grow.
             </p>
             <p className="text-lg text-white/70 max-w-4xl mx-auto mt-6 animate-fade-in-up animation-delay-600">
-              XS Card is a virtual card and relationship dashboard built for teams who value meaningful connections. It helps organisations track interactions, understand engagement, and maintain continuity across every professional touchpoint — all in one intuitive system.
+              XS Card is a virtual card and relationship dashboard built for teams who value meaningful connections. It helps organisations track interactions, understand engagement, and maintain continuity across every professional touchpoint - all in one intuitive system.
             </p>
             <p className="text-base text-white/60 max-w-4xl mx-auto mt-4 animate-fade-in-up animation-delay-800">
               From marketing and sales to HR and operations, XS Card ensures every connection is captured, remembered, and actionable, giving teams clarity and control over their professional networks.
@@ -1394,7 +1394,7 @@ export default function HomePage() {
                   </div>
                   <h4 className="text-xl font-semibold text-white mb-3">Event & Campaign Intelligence</h4>
                   <p className="text-white/70 leading-relaxed">
-                    Every connection tells a story. Each time an XS Card is shared, key interaction data — including shares, engagement, and location — is automatically recorded, giving teams real-time insight into what's working and where conversations are happening.
+                    Every connection tells a story. Each time an XS Card is shared, key interaction data - including shares, engagement, and location - is automatically recorded, giving teams real-time insight into what's working and where conversations are happening.
                   </p>
                 </CardContent>
               </Card>
@@ -1420,7 +1420,7 @@ export default function HomePage() {
                   </div>
                   <h4 className="text-xl font-semibold text-white mb-3">Centralised Brand & Profile Management</h4>
                   <p className="text-white/70 leading-relaxed">
-                    Stay consistent everywhere. Update contact details, roles, links, and branding across all team cards instantly — ensuring every interaction reflects your organisation accurately and professionally.
+                    Stay consistent everywhere. Update contact details, roles, links, and branding across all team cards instantly - ensuring every interaction reflects your organisation accurately and professionally.
                   </p>
                 </CardContent>
               </Card>
@@ -1510,7 +1510,7 @@ export default function HomePage() {
               <CardContent className="p-0">
                 <h3 className="text-2xl font-bold text-white mb-4">Why XS Card Works</h3>
                 <p className="text-lg text-white/80 leading-relaxed">
-                  XS Card bridges the gap between people and performance — giving organisations the power to track, analyse, and enhance every professional interaction, while maintaining a unified brand identity across teams and departments.
+                  XS Card bridges the gap between people and performance - giving organisations the power to track, analyse, and enhance every professional interaction, while maintaining a unified brand identity across teams and departments.
                 </p>
                 <div className="mt-8">
                   <Button
