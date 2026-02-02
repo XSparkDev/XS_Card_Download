@@ -329,17 +329,11 @@ export const usePremiumAuthGuard = (): UsePremiumAuthGuardReturn => {
 
       const result = await response.json();
       
-      if (result.status === true && result.data?.authorization_url) {
-        // Open the Paystack authorization URL in a new window/tab
-        window.open(result.data.authorization_url, '_blank');
-        
-        // Close modal and show success message
+      if (result.status === true) {
+        // Close modal after successful submission
         setShowAuthModal(false);
-        console.log('Paystack authorization URL opened:', result.data.authorization_url);
-        console.log('Access code:', result.data.access_code);
-        console.log('Reference:', result.data.reference);
       } else {
-        throw new Error(result.message || 'Failed to create authorization URL');
+        throw new Error(result.message || 'Failed to process request');
       }
       
     } catch (error) {

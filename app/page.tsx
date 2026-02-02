@@ -216,12 +216,19 @@ export default function HomePage() {
   // Fetch demo video from backend
   const fetchDemoVideo = async () => {
     try {
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+
       const response = await fetch(`${API_BASE_URL}/api/feature-videos`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        signal: controller.signal
       })
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -233,9 +240,23 @@ export default function HomePage() {
         // Find video marked as demo, fallback to first video if none marked
         const demoVideo = result.videos.find((v: any) => v.isDemo) || result.videos[0]
         setDemoVideoUrl(demoVideo.url)
+      } else {
+        // No videos found, use fallback
+        setDemoVideoUrl('/videos/demo.mp4')
       }
     } catch (error) {
-      console.error('Error fetching demo video:', error)
+      // Handle different types of errors
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          console.warn('Demo video fetch timed out. Using fallback video.')
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          console.warn('Backend server unavailable. Using fallback video. Make sure the backend is running at', API_BASE_URL)
+        } else {
+          console.error('Error fetching demo video:', error.message)
+        }
+      } else {
+        console.error('Unknown error fetching demo video:', error)
+      }
       // Fallback to local video if backend fails
       setDemoVideoUrl('/videos/demo.mp4')
     }
@@ -992,18 +1013,17 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 blur-3xl"></div>
         <div className="max-w-7xl mx-auto text-center relative z-10 px-2 sm:px-0">
           <Badge className="mb-6 bg-white/10 text-white border-white/20 hover:bg-white/20 animate-fade-in-up">
-            ✨ The Future Business Card, Today
+            ✨ The Future Access Card, Today
           </Badge>
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight animate-fade-in-up animation-delay-200">
-            Your Digital
+            Your Virtual
             <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
               {" "}
-              Business Card
+              Access Card
             </span>
           </h1>
           <p className="text-lg sm:text-xl text-white/80 mb-8 max-w-3xl mx-auto leading-relaxed animate-fade-in-up animation-delay-400 px-4">
-            Create stunning, interactive digital business cards that make lasting impressions. Share your professional
-            identity instantly with QR codes, NFC, and smart links.
+            A virtual card and networking dashboard designed to help professionals build meaningful connections, remember every interaction, and never lose track of a contact again.
           </p>
           <div className="flex justify-center items-center animate-fade-in-up animation-delay-600">
             <Button
@@ -1019,10 +1039,33 @@ export default function HomePage() {
             {isClient ? (
               (() => {
                 const platformInfo = getPlatformInfo()
+                const getStoreUrl = (text: string) => {
+                  if (text === "Available on Android") {
+                    return "https://play.google.com/store/apps/details?id=com.p.zzles.xscard"
+                  } else if (text === "Available on iOS") {
+                    return "https://apps.apple.com/us/app/xs-card/id6742452317?uo=4"
+                  } else if (text === "Available on macOS") {
+                    return "https://apps.apple.com/us/app/xs-card/id6742452317?uo=4"
+                  }
+                  return null
+                }
+                const storeUrl = getStoreUrl(platformInfo.text)
+                const isClickable = storeUrl !== null
                 return (
                   <div className={`flex items-center space-x-2 ${platformInfo.className}`}>
                     {platformInfo.icon}
-                    <span>{platformInfo.text}</span>
+                    {isClickable ? (
+                      <a
+                        href={storeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline cursor-pointer"
+                      >
+                        {platformInfo.text}
+                      </a>
+                    ) : (
+                      <span>{platformInfo.text}</span>
+                    )}
                   </div>
                 )
               })()
@@ -1043,9 +1086,14 @@ export default function HomePage() {
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 animate-fade-in-up animation-delay-200">
               Why Choose XS Card?
             </h2>
-            <p className="text-xl text-white/80 max-w-3xl mx-auto animate-fade-in-up animation-delay-400 mb-8">
-              Experience the next generation of professional networking with our cutting-edge features
-            </p>
+            <div className="text-xl text-white/80 max-w-3xl mx-auto animate-fade-in-up animation-delay-400 mb-8 space-y-4">
+              <p>
+                Professional relationships don't end after the first exchange - they grow over time. XS Card helps you remember every interaction, track every connection, and build stronger professional relationships without effort.
+              </p>
+              <p>
+                More than a virtual card, XS Card is a smart networking dashboard that captures context, engagement, and follow-ups automatically - so no contact is ever forgotten and no opportunity slips through the cracks.
+              </p>
+            </div>
             
             {/* Watch Demo Button */}
             <div className="flex justify-center animate-fade-in-up animation-delay-600 mb-12">
@@ -1123,7 +1171,7 @@ export default function HomePage() {
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">Pricing Plans</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-              Choose the perfect plan for your business needs. All prices are exclusive of VAT.
+              Simple, scalable plans designed for professionals and teams at every stage. Choose the option that fits your workflow and growth goals. All prices are exclusive of VAT.
             </p>
             <div className="flex justify-center">
               <CurrencySelector
@@ -1147,7 +1195,7 @@ export default function HomePage() {
                 <ul className="space-y-3 mb-8">
                   <li className="flex items-start">
                     <span className="text-green-500 mr-2">✓</span>
-                    <span className="text-gray-700">Create one basic digital business card</span>
+                    <span className="text-gray-700">Create one basic virtual card</span>
                   </li>
                   <li className="flex items-start">
                     <span className="text-green-500 mr-2">✓</span>
@@ -1200,7 +1248,7 @@ export default function HomePage() {
                 <ul className="space-y-3 mb-8">
                   <li className="flex items-start">
                     <span className="text-green-500 mr-2">✓</span>
-                    <span className="text-gray-700">Create unlimited digital business cards</span>
+                    <span className="text-gray-700">Create unlimited virtual cards</span>
                   </li>
                   <li className="flex items-start">
                     <span className="text-green-500 mr-2">✓</span>
@@ -1323,13 +1371,13 @@ export default function HomePage() {
               XS Card for Teams and Departments
             </h2>
             <p className="text-xl text-white/80 max-w-3xl mx-auto animate-fade-in-up animation-delay-400">
-              Connect. Track. Grow.
+              Connect. Remember. Grow.
             </p>
             <p className="text-lg text-white/70 max-w-4xl mx-auto mt-6 animate-fade-in-up animation-delay-600">
-              XS Card is a digital business card and real-time CRM designed to help teams connect smarter, manage relationships efficiently, and measure engagement effortlessly.
+              XS Card is a virtual card and relationship dashboard built for teams who value meaningful connections. It helps organisations track interactions, understand engagement, and maintain continuity across every professional touchpoint - all in one intuitive system.
             </p>
             <p className="text-base text-white/60 max-w-4xl mx-auto mt-4 animate-fade-in-up animation-delay-800">
-              From marketing and sales to communications, HR, and operations, XS Card brings visibility, consistency, and control to every professional interaction — all through a single, intuitive dashboard.
+              From marketing and sales to HR and operations, XS Card ensures every connection is captured, remembered, and actionable, giving teams clarity and control over their professional networks.
             </p>
           </div>
 
@@ -1344,9 +1392,9 @@ export default function HomePage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                   </div>
-                  <h4 className="text-xl font-semibold text-white mb-3">Event & Campaign Tracking</h4>
+                  <h4 className="text-xl font-semibold text-white mb-3">Event & Campaign Intelligence</h4>
                   <p className="text-white/70 leading-relaxed">
-                    Capture every connection. Each shared XS Card automatically logs data such as number of shares, engagement levels, and locations — giving your team real-time insights into performance and campaign reach.
+                    Every connection tells a story. Each time an XS Card is shared, key interaction data - including shares, engagement, and location - is automatically recorded, giving teams real-time insight into what's working and where conversations are happening.
                   </p>
                 </CardContent>
               </Card>
@@ -1358,9 +1406,9 @@ export default function HomePage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                   </div>
-                  <h4 className="text-xl font-semibold text-white mb-3">Lead and Contact Management</h4>
+                  <h4 className="text-xl font-semibold text-white mb-3">Lead & Relationship Management</h4>
                   <p className="text-white/70 leading-relaxed">
-                    Never lose a lead again. Track, manage, and follow up on every connection instantly. Identify your most engaged prospects and integrate seamlessly with existing CRM or communication tools.
+                    Stop relying on memory or scattered notes. XS Card keeps a living history of every interaction, helping teams follow up at the right time, prioritise engaged contacts, and maintain relationships long after the first meeting.
                   </p>
                 </CardContent>
               </Card>
@@ -1370,9 +1418,9 @@ export default function HomePage() {
                   <div className="text-purple-400 mb-4 group-hover:text-pink-400 transition-colors">
                     <Shield className="h-8 w-8" />
                   </div>
-                  <h4 className="text-xl font-semibold text-white mb-3">Centralised Brand and Profile Control</h4>
+                  <h4 className="text-xl font-semibold text-white mb-3">Centralised Brand & Profile Management</h4>
                   <p className="text-white/70 leading-relaxed">
-                    Keep your organisation consistent and professional. Update contact details, logos and web links across all employee cards instantly from the dashboard.
+                    Stay consistent everywhere. Update contact details, roles, links, and branding across all team cards instantly - ensuring every interaction reflects your organisation accurately and professionally.
                   </p>
                 </CardContent>
               </Card>
@@ -1384,9 +1432,9 @@ export default function HomePage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                   </div>
-                  <h4 className="text-xl font-semibold text-white mb-3">Cross-Departmental Insights</h4>
+                  <h4 className="text-xl font-semibold text-white mb-3">Cross-Team Visibility</h4>
                   <p className="text-white/70 leading-relaxed">
-                    Get a big-picture view of engagement across your company. Compare performance between teams, divisions, or regions to make smarter marketing and operational decisions.
+                    See the full picture. Compare engagement across departments, regions, or campaigns to identify trends, improve coordination, and make smarter, data-driven decisions.
                   </p>
                 </CardContent>
               </Card>
@@ -1407,7 +1455,7 @@ export default function HomePage() {
                   </div>
                   <h4 className="text-lg font-semibold text-white mb-2">Marketing</h4>
                   <p className="text-white/70 text-sm leading-relaxed">
-                    Measure brand visibility and engagement across events, campaigns, and activations. XS Card turns every interaction into actionable marketing data.
+                    Turn conversations into insights. XS Card shows how and where your brand is being shared, helping you measure real-world engagement beyond impressions and clicks.
                   </p>
                 </CardContent>
               </Card>
@@ -1421,7 +1469,7 @@ export default function HomePage() {
                   </div>
                   <h4 className="text-lg font-semibold text-white mb-2">Sales</h4>
                   <p className="text-white/70 text-sm leading-relaxed">
-                    Empower your sales team with instant lead capture, real-time insights, and automated CRM integration — helping them focus on closing deals, not collecting business cards.
+                    Never lose momentum. Capture leads instantly, track interaction history, and focus on relationships that are warming - not business cards that get forgotten.
                   </p>
                 </CardContent>
               </Card>
@@ -1435,7 +1483,7 @@ export default function HomePage() {
                   </div>
                   <h4 className="text-lg font-semibold text-white mb-2">Human Resources</h4>
                   <p className="text-white/70 text-sm leading-relaxed">
-                    Equip new hires with digital business cards instantly and maintain consistent contact details, roles, and branding across your organisation.
+                    Onboard faster and stay consistent. Issue virtual cards instantly and maintain up-to-date roles, contact details, and branding across the organisation.
                   </p>
                 </CardContent>
               </Card>
@@ -1449,7 +1497,7 @@ export default function HomePage() {
                   </div>
                   <h4 className="text-lg font-semibold text-white mb-2">Operations & Corporate Services</h4>
                   <p className="text-white/70 text-sm leading-relaxed">
-                    Gain oversight of engagement activity across departments. XS Card simplifies data collection and reporting, helping you align teams around performance and communication goals.
+                    Gain clarity without complexity. XS Card centralises engagement data, simplifies reporting, and helps align teams around communication and performance goals.
                   </p>
                 </CardContent>
               </Card>
@@ -1462,7 +1510,7 @@ export default function HomePage() {
               <CardContent className="p-0">
                 <h3 className="text-2xl font-bold text-white mb-4">Why XS Card Works</h3>
                 <p className="text-lg text-white/80 leading-relaxed">
-                  XS Card bridges the gap between people and performance — giving organisations the power to track, analyse, and enhance every professional interaction, while maintaining a unified brand identity across teams and departments.
+                  XS Card bridges the gap between people and performance - giving organisations the power to track, analyse, and enhance every professional interaction, while maintaining a unified brand identity across teams and departments.
                 </p>
                 <div className="mt-8">
                   <Button
@@ -1497,10 +1545,10 @@ export default function HomePage() {
               <CardContent className="p-0">
                 <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">Ready to Go Digital?</h2>
                 <p className="text-xl text-white/80 mb-6 max-w-2xl mx-auto">
-                  Join thousands of professionals who've already made the switch to digital business cards.
+                  Join thousands of professionals who've already made the switch to virtual cards.
                 </p>
                 <p className="text-sm text-white/60 mb-8 max-w-xl mx-auto">
-                  🌱 By choosing digital business cards, you're helping reduce paper waste and supporting our carbon
+                  🌱 By choosing virtual cards, you're helping reduce paper waste and supporting our carbon
                   offset initiatives. Every digital card created helps fund reforestation projects worldwide.
                 </p>
                 <div className="flex justify-center">
@@ -1739,7 +1787,7 @@ export default function HomePage() {
             {/* Additional Info */}
             <div className="text-center">
               <p className="text-xs text-white/80 font-medium drop-shadow-sm">
-                Start creating your digital business card in minutes. No credit card required for free plan.
+                Start creating your virtual card in minutes. No credit card required for free plan.
               </p>
             </div>
           </div>
