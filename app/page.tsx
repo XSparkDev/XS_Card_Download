@@ -216,12 +216,19 @@ export default function HomePage() {
   // Fetch demo video from backend
   const fetchDemoVideo = async () => {
     try {
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+
       const response = await fetch(`${API_BASE_URL}/api/feature-videos`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        signal: controller.signal
       })
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -233,9 +240,23 @@ export default function HomePage() {
         // Find video marked as demo, fallback to first video if none marked
         const demoVideo = result.videos.find((v: any) => v.isDemo) || result.videos[0]
         setDemoVideoUrl(demoVideo.url)
+      } else {
+        // No videos found, use fallback
+        setDemoVideoUrl('/videos/demo.mp4')
       }
     } catch (error) {
-      console.error('Error fetching demo video:', error)
+      // Handle different types of errors
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          console.warn('Demo video fetch timed out. Using fallback video.')
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          console.warn('Backend server unavailable. Using fallback video. Make sure the backend is running at', API_BASE_URL)
+        } else {
+          console.error('Error fetching demo video:', error.message)
+        }
+      } else {
+        console.error('Unknown error fetching demo video:', error)
+      }
       // Fallback to local video if backend fails
       setDemoVideoUrl('/videos/demo.mp4')
     }
@@ -1065,9 +1086,14 @@ export default function HomePage() {
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 animate-fade-in-up animation-delay-200">
               Why Choose XS Card?
             </h2>
-            <p className="text-xl text-white/80 max-w-3xl mx-auto animate-fade-in-up animation-delay-400 mb-8">
-              Experience the next generation of professional networking with our cutting-edge features
-            </p>
+            <div className="text-xl text-white/80 max-w-3xl mx-auto animate-fade-in-up animation-delay-400 mb-8 space-y-4">
+              <p>
+                Professional relationships don't end after the first exchange — they grow over time. XS Card helps you remember every interaction, track every connection, and build stronger professional relationships without effort.
+              </p>
+              <p>
+                More than a virtual card, XS Card is a smart networking dashboard that captures context, engagement, and follow-ups automatically — so no contact is ever forgotten and no opportunity slips through the cracks.
+              </p>
+            </div>
             
             {/* Watch Demo Button */}
             <div className="flex justify-center animate-fade-in-up animation-delay-600 mb-12">
